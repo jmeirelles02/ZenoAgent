@@ -7,17 +7,20 @@ import subprocess
 import re
 import pygame
 import speech_recognition as sr
-import ollama
+from google import genai
+from google.genai import types
 import threading
 import psycopg2
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from ddgs import DDGS
 import keyboard
 from dotenv import load_dotenv
+import queue
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
+cliente_gemini = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 pygame.mixer.init()
 
@@ -27,12 +30,22 @@ estado_zeno = {
     "zeno": "Sistemas iniciados."
 }
 
+fila_comandos = queue.Queue()
+
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/estado')
+@app.route('/estado', methods=['GET'])
 def estado():
     return jsonify(estado_zeno)
+
+@app.route('/enviar', methods=['POST'])
+def receber_comando():
+    dados = request.json
+    comando = dados.get('comando', '')
+    if comando:
+        fila_comandos.put(comando)
+    return jsonify({"status": "recebido"})
 
 def rodar_servidor():
     import logging
@@ -195,7 +208,7 @@ def buscar_na_internet(consulta):
 def iniciar_zeno_core():
     global estado_zeno
     print("==================================================")
-    print("Zeno System Iniciado")
+    print("Zeno System Iniciado. Conectado ao Google Gemini.")
     print("==================================================")
     
     inicializar_banco()
@@ -203,17 +216,11 @@ def iniciar_zeno_core():
     thread_servidor.start()
 
     caminho_desktop = obter_caminho_desktop()
-    
-    usuario_db = input("\nIdentificacao de usuario necessaria. Digite seu nome: ").strip()
-    if usuario_db == "":
-        usuario_db = "Visitante"
+    usuario_db = "Joao"
         
     memoria_banco = carregar_memoria(usuario_db)
 
-    mensagens = [
-        {
-            "role": "system", 
-            "content": f"""Voce e o Zeno, um assistente virtual de elite.
+    instrucoes_sistema = f"""Voce e o Zeno, um assistente virtual de elite.
 Voce TEM PERMISSAO TOTAL para executar comandos no Windows do usuario. NUNCA diga que nao pode abrir programas.
 O diretorio da Area de Trabalho e: {caminho_desktop}
 
@@ -224,7 +231,7 @@ Fatos armazenados:
 
 REGRAS OBRIGATORIAS DE MEMORIA:
 1. Grave fatos novos em tags separadas usando EXCLUSIVAMENTE [MEM] e [/MEM]. 
-2. PROIBICAO ABSOLUTA: NUNCA crie tags inventadas como [Aguardar...], [ACAO], etc.
+2. PROIBICAO ABSOLUTA: NUNCA crie tags inventadas.
 
 REGRAS PARA USO DE COMANDOS:
 1. Para abrir programas, forneca o comando APENAS dentro de [CMD] e [/CMD].
@@ -233,26 +240,33 @@ REGRAS PARA USO DE COMANDOS:
 REGRAS PARA PROCESSAMENTO DE DADOS (ETL):
 1. Escreva o codigo Python exato dentro de [PYTHON] e [/PYTHON].
 2. SEMPRE use caminhos absolutos para ler arquivos.
-3. OBRIGATORIO: Para salvar arquivos na Area de Trabalho, use EXATAMENTE a string r"{caminho_desktop}\\resultado_limpo.csv" dentro do seu script.
-4. NUNCA use caminhos relativos na funcao to_csv().
+3. OBRIGATORIO: Para salvar arquivos na Area de Trabalho, use EXATAMENTE a string r"{caminho_desktop}\\resultado.csv" dentro do script.
+4. NUNCA use caminhos relativos.
 
 COMUNICACAO:
-Responda em portugues do Brasil de forma direta.
-NUNCA imprima o seu raciocinio de etapas na tela."""
-        }
-    ]
+Responda em portugues do Brasil de forma direta e sem firulas. NUNCA imprima o seu raciocinio de etapas na tela."""
+
+    configuracao_chat = types.GenerateContentConfig(
+        system_instruction=instrucoes_sistema,
+    )
+    
+    chat = cliente_gemini.chats.create(model="gemini-3.1-flash-lite-preview", config=configuracao_chat)
 
     while True:
         try:
             estado_zeno["status"] = "ONLINE"
-            entrada = input(f"\n{usuario_db} (Digite ou de Enter para Voz): ")
+            
+            try:
+                entrada = fila_comandos.get(timeout=1.0)
+            except queue.Empty:
+                continue
             
             if entrada.lower() in ['sair', 'exit', 'quit']:
                 estado_zeno["status"] = "DESLIGANDO..."
                 falar("Encerrando protocolos. Ate a proxima, senhor.")
                 break
             
-            if entrada == "":
+            if entrada == "[VOZ]":
                 pergunta = ouvir()
                 if pergunta == "":
                     continue
@@ -268,36 +282,27 @@ NUNCA imprima o seu raciocinio de etapas na tela."""
             ]
             if any(g in pergunta.lower() for g in gatilhos_pesquisa):
                 estado_zeno["status"] = "BUSCANDO NA REDE..."
-                sys.stdout.write("Zeno varrendo a internet...")
-                sys.stdout.flush()
                 dados_web = buscar_na_internet(pergunta)
-                instrucao = "Responda de forma direta e factual usando APENAS os dados da web acima. NUNCA invente ou adivinhe valores."
+                instrucao = "Responda de forma direta e factual usando APENAS os dados da web acima. NUNCA invente valores."
                 pergunta_formatada = f"Resultados da web:\n{dados_web}\n\nPergunta: {pergunta}\n\nInstrução: {instrucao}"
-                sys.stdout.write("\r" + " " * 30 + "\r")
 
             estado_zeno["status"] = "PENSANDO..."
-            mensagens.append({"role": "user", "content": pergunta_formatada})
             
-            sys.stdout.write("\rZeno processando..." + " " * 10)
-            sys.stdout.flush()
-
-            resposta_streaming = ollama.chat(model='llama3.2', messages=mensagens, stream=True)
-            sys.stdout.write("\r" + " " * 20 + "\r")
+            resposta_streaming = chat.send_message_stream(pergunta_formatada)
             
-            print("Zeno: ", end="")
             texto_resposta_completa = ""
+            print("Zeno: ", end="")
             for chunk in resposta_streaming:
-                texto_chunk = chunk['message']['content']
-                print(texto_chunk, end="", flush=True)
-                texto_resposta_completa += texto_chunk
-            print() 
+                if chunk.text:
+                    texto_chunk = chunk.text
+                    print(texto_chunk, end="", flush=True)
+                    texto_resposta_completa += texto_chunk
+            print()
             
             estado_zeno["zeno"] = limpar_texto_para_fala(texto_resposta_completa)
             
             processar_tags_ocultas(texto_resposta_completa, usuario_db)
             falar(texto_resposta_completa)
-            
-            mensagens.append({"role": "assistant", "content": texto_resposta_completa})
 
         except KeyboardInterrupt:
             sys.exit()

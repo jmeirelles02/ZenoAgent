@@ -21,7 +21,7 @@
 
       .zeno-hud-container {
         width: 580px;
-        height: 480px;
+        height: 520px;
         background-color: rgba(0, 10, 20, 0.85);
         border: 1px solid rgba(0, 243, 255, 0.2);
         border-radius: 20px;
@@ -43,9 +43,9 @@
 
       .arc-reactor {
         position: relative;
-        width: 240px;
-        height: 240px;
-        margin-top: 30px;
+        width: 220px;
+        height: 220px;
+        margin-top: 20px;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -57,15 +57,15 @@
       }
 
       .outer-ring {
-        width: 230px;
-        height: 230px;
+        width: 210px;
+        height: 210px;
         border: 2px dashed rgba(0, 243, 255, 0.4);
         animation: spin 12s linear infinite;
       }
 
       .middle-ring {
-        width: 180px;
-        height: 180px;
+        width: 160px;
+        height: 160px;
         border: 3px solid rgba(0, 150, 255, 0.2);
         border-top-color: #00f3ff;
         border-bottom-color: #00f3ff;
@@ -73,16 +73,16 @@
       }
 
       .inner-ring {
-        width: 130px;
-        height: 130px;
+        width: 110px;
+        height: 110px;
         border: 2px dotted #00f3ff;
         animation: spin 5s linear infinite;
         transition: border-color 0.3s ease;
       }
 
       .core {
-        width: 70px;
-        height: 70px;
+        width: 60px;
+        height: 60px;
         background: radial-gradient(circle, #ffffff 0%, #00f3ff 40%, rgba(0, 150, 255, 0.6) 100%);
         box-shadow: 0 0 30px #00f3ff, 0 0 60px #00f3ff;
         animation: simbiose_calma 4s ease-in-out infinite;
@@ -104,53 +104,72 @@
       }
 
       @keyframes simbiose_calma {
-        0% { 
-          border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; 
-          transform: scale(0.95) rotate(0deg); 
-          opacity: 0.8; 
-        }
-        50% { 
-          border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; 
-          transform: scale(1.05) rotate(15deg); 
-          opacity: 1; 
-        }
-        100% { 
-          border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; 
-          transform: scale(0.95) rotate(30deg); 
-          opacity: 0.8; 
-        }
+        0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: scale(0.95) rotate(0deg); opacity: 0.8; }
+        50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: scale(1.05) rotate(15deg); opacity: 1; }
+        100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: scale(0.95) rotate(30deg); opacity: 0.8; }
       }
 
       @keyframes simbiose_agitada {
-        0% { 
-          border-radius: 40% 60% 50% 50% / 40% 50% 60% 50%; 
-          transform: scale(1.1) rotate(0deg); 
-        }
-        100% { 
-          border-radius: 70% 30% 40% 60% / 50% 40% 70% 30%; 
-          transform: scale(1.2) rotate(45deg); 
-        }
+        0% { border-radius: 40% 60% 50% 50% / 40% 50% 60% 50%; transform: scale(1.1) rotate(0deg); }
+        100% { border-radius: 70% 30% 40% 60% / 50% 40% 70% 30%; transform: scale(1.2) rotate(45deg); }
       }
 
       .zeno-log {
         width: 85%;
-        margin-top: 30px;
+        margin-top: 20px;
         font-size: 13px;
         color: #bdf8ff;
         background-color: rgba(0, 20, 40, 0.6);
         padding: 12px;
         border-left: 3px solid #00f3ff;
         border-radius: 4px;
+        height: 60px;
+        overflow-y: hidden;
       }
 
       .zeno-status {
-        margin-top: auto;
-        margin-bottom: 20px;
+        margin-top: 15px;
         font-size: 12px;
         font-weight: bold;
         letter-spacing: 3px;
         color: #00f3ff;
         text-transform: uppercase;
+      }
+
+      .input-area {
+        display: flex;
+        width: 85%;
+        margin-top: auto;
+        margin-bottom: 20px;
+        gap: 10px;
+        -webkit-app-region: no-drag;
+      }
+
+      .input-texto {
+        flex: 1;
+        background-color: rgba(0, 20, 40, 0.8);
+        border: 1px solid #00f3ff;
+        border-radius: 5px;
+        color: #00f3ff;
+        padding: 10px;
+        font-size: 14px;
+        outline: none;
+      }
+
+      .btn-voz {
+        background-color: rgba(0, 20, 40, 0.8);
+        border: 1px solid #00f3ff;
+        border-radius: 5px;
+        color: #00f3ff;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background 0.3s;
+      }
+
+      .btn-voz:hover {
+        background-color: #00f3ff;
+        color: #000;
       }
     </style>
   </head>
@@ -171,6 +190,11 @@
       </div>
       
       <div class="zeno-status" id="status-text">[ STANDBY ]</div>
+
+      <div class="input-area">
+        <button class="btn-voz" id="btn-voz" title="Falar com o Zeno">🎙️</button>
+        <input type="text" class="input-texto" id="input-texto" placeholder="Digite seu comando aqui..." autocomplete="off" />
+      </div>
     </div>
 
     <script>
@@ -179,6 +203,32 @@
       const statusText = document.getElementById('status-text');
       const coreLight = document.getElementById('core-light');
       const innerRing = document.getElementById('inner-ring');
+      const inputTexto = document.getElementById('input-texto');
+      const btnVoz = document.getElementById('btn-voz');
+
+      async function enviarComando(texto) {
+        if (!texto) return;
+        inputTexto.value = '';
+        try {
+          await fetch('http://localhost:5000/enviar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comando: texto })
+          });
+        } catch (erro) {
+          console.error("Erro ao enviar comando:", erro);
+        }
+      }
+
+      inputTexto.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+          enviarComando(inputTexto.value);
+        }
+      });
+
+      btnVoz.addEventListener('click', function () {
+        enviarComando('[VOZ]');
+      });
 
       setInterval(async () => {
         try {
