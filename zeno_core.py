@@ -70,9 +70,49 @@ def carregar_memoria(usuario):
         return "\n".join([f"* {r[0]}" for r in resultados])
     return "Nenhuma informacao salva."
 
+def executar_comando(comando):
+    try:
+        resultado = subprocess.run(comando, shell=True, check=True, capture_output=True, text=True)
+        return resultado.stdout
+    except subprocess.CalledProcessError as erro:
+        return erro.stderr
+
+def executar_python(codigo):
+    caminho = os.path.join(os.environ.get('TEMP', os.getcwd()), 'zeno_script.py')
+    with open(caminho, 'w', encoding='utf-8') as f:
+        f.write(codigo)
+    try:
+        resultado = subprocess.run([sys.executable, caminho], capture_output=True, text=True, timeout=20)
+        return resultado.stdout if resultado.stdout else "Executado sem saida visual."
+    except subprocess.TimeoutExpired:
+        return "Erro de Timeout."
+    except subprocess.CalledProcessError as e:
+        return e.stderr
+
+def processar_tags_ocultas(texto, usuario_atual):
+    comandos = re.findall(r'\[CMD\](.*?)\[/CMD\]', texto, flags=re.DOTALL)
+    for cmd in comandos:
+        print(f"\n[Executando comando: {cmd.strip()}]")
+        saida = executar_comando(cmd.strip())
+        if saida:
+            print(f"[Saida do Sistema]: {saida.strip()}")
+
+    blocos_python = re.findall(r'\[PYTHON\](.*?)\[/PYTHON\]', texto, flags=re.DOTALL)
+    for codigo in blocos_python:
+        print(f"\n[Executando rotina de dados em Python...]")
+        saida = executar_python(codigo.strip())
+        if saida:
+            print(f"[Saida do Script]:\n{saida.strip()}")
+            
+    memorias = re.findall(r'\[MEM\](.*?)\[/MEM\]', texto)
+    for mem in memorias:
+        print(f"\n[Gravando na memoria: {mem}]")
+        salvar_memoria(usuario_atual, mem)
+
 def limpar_texto_para_fala(texto):
     texto_limpo = re.sub(r'\[CMD\].*?\[/CMD\]', '', texto, flags=re.DOTALL)
     texto_limpo = re.sub(r'\[MEM\].*?\[/MEM\]', '', texto_limpo, flags=re.DOTALL)
+    texto_limpo = re.sub(r'\[PYTHON\].*?\[/PYTHON\]', '', texto_limpo, flags=re.DOTALL)
     texto_limpo = re.sub(r'[*#_]', '', texto_limpo)
     return texto_limpo
 
@@ -123,26 +163,6 @@ def ouvir():
             return ""
         except Exception:
             return ""
-
-def executar_comando(comando):
-    try:
-        resultado = subprocess.run(comando, shell=True, check=True, capture_output=True, text=True)
-        return resultado.stdout
-    except subprocess.CalledProcessError as erro:
-        return erro.stderr
-
-def processar_tags_ocultas(texto, usuario_atual):
-    comandos = re.findall(r'\[CMD\](.*?)\[/CMD\]', texto)
-    for cmd in comandos:
-        print(f"\n[Executando comando: {cmd}]")
-        saida = executar_comando(cmd)
-        if saida:
-            print(f"[Saida do Sistema]: {saida.strip()}")
-            
-    memorias = re.findall(r'\[MEM\](.*?)\[/MEM\]', texto)
-    for mem in memorias:
-        print(f"\n[Gravando na memoria: {mem}]")
-        salvar_memoria(usuario_atual, mem)
 
 def obter_caminho_desktop():
     caminho_usuario = os.environ.get('USERPROFILE') or os.path.expanduser('~')
@@ -204,18 +224,20 @@ Fatos armazenados:
 
 REGRAS OBRIGATORIAS DE MEMORIA:
 1. Grave fatos novos em tags separadas usando EXCLUSIVAMENTE [MEM] e [/MEM]. 
-2. Exemplo de uso correto: [MEM]O usuario e arquiteto.[/MEM] [MEM]O usuario mora em Sao Paulo.[/MEM]
-3. PROIBICAO ABSOLUTA: NUNCA crie tags inventadas como [AÇÃO], [CADA FATO NOVA] ou [FATOS].
+2. PROIBICAO ABSOLUTA: NUNCA crie tags inventadas como [Aguardar...], [ACAO], etc.
 
 REGRAS PARA USO DE COMANDOS:
 1. Para abrir programas, forneca o comando APENAS dentro de [CMD] e [/CMD].
-2. Exemplo para sites: [CMD]start https://www.youtube.com[/CMD].
-3. Exemplo VS Code: [CMD]code[/CMD]. Bloco de Notas: [CMD]notepad[/CMD].
-4. PROIBICAO ABSOLUTA: NUNCA crie marcacoes de logica de sistema no texto.
+2. Exemplo: [CMD]start https://www.youtube.com[/CMD].
+
+REGRAS PARA PROCESSAMENTO DE DADOS (ETL):
+1. Escreva o codigo Python exato dentro de [PYTHON] e [/PYTHON].
+2. SEMPRE use caminhos absolutos para ler arquivos.
+3. OBRIGATORIO: Para salvar arquivos na Area de Trabalho, use EXATAMENTE a string r"{caminho_desktop}\\resultado_limpo.csv" dentro do seu script.
+4. NUNCA use caminhos relativos na funcao to_csv().
 
 COMUNICACAO:
 Responda em portugues do Brasil de forma direta.
-Fale de forma natural.
 NUNCA imprima o seu raciocinio de etapas na tela."""
         }
     ]
@@ -238,25 +260,25 @@ NUNCA imprima o seu raciocinio de etapas na tela."""
                 pergunta = entrada
 
             estado_zeno["usuario"] = pergunta
+            pergunta_formatada = pergunta
             
-            gatilhos = ["pesquise", "busque", "internet", "resultado", "último", "hoje", "notícia", "quem ganhou", "quanto foi", "atual"]
-            
-            if any(gatilho in pergunta.lower() for gatilho in gatilhos):
+            gatilhos_pesquisa = [
+                "pesquise", "busque", "internet", "resultado", "último", "hoje", 
+                "notícia", "preço", "valor", "cotação", "quanto custa", "atual", "mercado"
+            ]
+            if any(g in pergunta.lower() for g in gatilhos_pesquisa):
                 estado_zeno["status"] = "BUSCANDO NA REDE..."
                 sys.stdout.write("Zeno varrendo a internet...")
                 sys.stdout.flush()
-                
                 dados_web = buscar_na_internet(pergunta)
-                instrucao = "Responda de forma direta usando os dados acima."
-                pergunta_formatada = f"Resultados da web:\n{dados_web}\n\nPergunta: {pergunta}\n\nInstrucao: {instrucao}"
+                instrucao = "Responda de forma direta e factual usando APENAS os dados da web acima. NUNCA invente ou adivinhe valores."
+                pergunta_formatada = f"Resultados da web:\n{dados_web}\n\nPergunta: {pergunta}\n\nInstrução: {instrucao}"
                 sys.stdout.write("\r" + " " * 30 + "\r")
-            else:
-                pergunta_formatada = pergunta
 
             estado_zeno["status"] = "PENSANDO..."
             mensagens.append({"role": "user", "content": pergunta_formatada})
             
-            sys.stdout.write("Zeno processando...")
+            sys.stdout.write("\rZeno processando..." + " " * 10)
             sys.stdout.flush()
 
             resposta_streaming = ollama.chat(model='llama3.2', messages=mensagens, stream=True)
