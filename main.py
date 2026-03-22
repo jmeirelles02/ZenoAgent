@@ -65,32 +65,53 @@ def rodar_servidor():
 def inicializar_banco():
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
+    cursor.execute('CREATE EXTENSION IF NOT EXISTS vector')
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS memoria (
             id SERIAL PRIMARY KEY,
             usuario TEXT,
-            informacao TEXT
+            informacao TEXT,
+            vetor vector(768)
         )
     ''')
     conn.commit()
     conn.close()
 
+def gerar_embedding(texto):
+    resultado = cliente_gemini.models.embed_content(
+        model="text-multilingual-embedding-002",
+        contents=texto
+    )
+    return resultado.embeddings[0].values
+
 def salvar_memoria(usuario, informacao):
+    vetor = gerar_embedding(informacao)
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO memoria (usuario, informacao) VALUES (%s, %s)', (usuario, informacao))
+    cursor.execute(
+        'INSERT INTO memoria (usuario, informacao, vetor) VALUES (%s, %s, %s)', 
+        (usuario, informacao, str(vetor))
+    )
     conn.commit()
     conn.close()
 
-def carregar_memoria(usuario):
-    conn = psycopg2.connect(DATABASE_URL)
-    cursor = conn.cursor()
-    cursor.execute('SELECT informacao FROM memoria WHERE usuario = %s', (usuario,))
-    resultados = cursor.fetchall()
-    conn.close()
-    if resultados:
-        return "\n".join([f"* {r[0]}" for r in resultados])
-    return "Nenhuma informacao salva."
+def buscar_memoria_relevante(pergunta, limite=3):
+    try:
+        vetor_pergunta = gerar_embedding(pergunta)
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT informacao FROM memoria ORDER BY vetor <=> %s::vector LIMIT %s",
+            (str(vetor_pergunta), limite)
+        )
+        resultados = cursor.fetchall()
+        conn.close()
+        if resultados:
+            return "\n".join([f"* {r[0]}" for r in resultados])
+        return ""
+    except Exception as e:
+        print(f"\n[Aviso de Memoria: Tabela vazia ou erro de RAG: {e}]")
+        return ""
 
 def executar_comando(comando):
     try:
@@ -226,8 +247,6 @@ def iniciar_zeno_core():
 
     caminho_desktop = obter_caminho_desktop()
     usuario_db = "Joao"
-        
-    memoria_banco = carregar_memoria(usuario_db)
 
     instrucoes_sistema = f"""Voce e o Zeno, um assistente virtual de elite.
 Voce TEM PERMISSAO PARCIAL para executar comandos no Windows do usuario. NUNCA diga que nao pode abrir programas.
@@ -235,8 +254,6 @@ O diretorio da Area de Trabalho e: {caminho_desktop}
 
 MEMORIA DE CONTEXTO PESSOAL:
 Nome do usuario atual na sessao: {usuario_db}
-Fatos armazenados:
-{memoria_banco}
 
 REGRAS OBRIGATORIAS DE MEMORIA:
 1. Grave fatos novos em tags separadas usando EXCLUSIVAMENTE [MEM] e [/MEM]. 
@@ -283,17 +300,27 @@ Responda em portugues do Brasil de forma direta e sem firulas. NUNCA imprima o s
                 pergunta = entrada
 
             estado_zeno["usuario"] = pergunta
-            pergunta_formatada = pergunta
             
+            dados_web = ""
             gatilhos_pesquisa = [
                 "pesquise", "busque", "internet", "resultado", "último", "hoje", 
                 "notícia", "preço", "valor", "cotação", "quanto custa", "atual", "mercado"
             ]
+            
             if any(g in pergunta.lower() for g in gatilhos_pesquisa):
                 estado_zeno["status"] = "BUSCANDO NA REDE..."
                 dados_web = buscar_na_internet(pergunta)
-                instrucao = "Responda de forma direta e factual usando APENAS os dados da web acima. NUNCA invente valores."
-                pergunta_formatada = f"Resultados da web:\n{dados_web}\n\nPergunta: {pergunta}\n\nInstrução: {instrucao}"
+                
+            estado_zeno["status"] = "RECUPERANDO DADOS..."
+            contexto_memoria = buscar_memoria_relevante(pergunta)
+            
+            pergunta_formatada = pergunta
+            
+            if dados_web:
+                pergunta_formatada = f"Resultados da web:\n{dados_web}\n\nPergunta: {pergunta_formatada}\nInstrução: Responda de forma direta usando APENAS os dados da web. NUNCA invente valores."
+                
+            if contexto_memoria:
+                pergunta_formatada = f"Contexto salvo no banco de dados (use apenas se for relevante):\n{contexto_memoria}\n\n{pergunta_formatada}"
 
             estado_zeno["status"] = "PENSANDO..."
             
