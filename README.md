@@ -1,4 +1,4 @@
-# Zeno System
+# Zeno Agent
 
 ## O que é o Zeno?
 O Zeno é um assistente virtual de operação local. Ele processa comandos de voz e texto para executar tarefas no sistema operacional Windows. O sistema une um back-end construído em Python com uma interface visual desenvolvida em Tauri (HTML/CSS/JS).
@@ -9,7 +9,7 @@ O Zeno possui as seguintes funções ativas:
 * Executar comandos de sistema e abrir programas.
 * Escrever e rodar scripts Python locais automaticamente.
 * Consultar dados atualizados na internet.
-* Armazenar memória de longo prazo usando PostgreSQL.
+* Armazenar memória de longo prazo usando busca vetorial (RAG) e Embeddings.
 * Sintetizar respostas em áudio (Text-to-Speech).
 
 ## Configuração de Ambiente (.env)
