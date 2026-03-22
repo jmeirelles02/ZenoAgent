@@ -115,8 +115,10 @@ def buscar_memoria_relevante(pergunta, limite=3):
 
 def executar_comando(comando):
     try:
-        resultado = subprocess.run(comando, shell=True, check=True, capture_output=True, text=True)
+        resultado = subprocess.run(comando, shell=True, check=True, capture_output=True, text=True, timeout=15)
         return resultado.stdout
+    except subprocess.TimeoutExpired:
+        return "Erro: O comando bloqueou o sistema e foi cancelado por tempo excedido."
     except subprocess.CalledProcessError as erro:
         return erro.stderr
 
@@ -287,7 +289,7 @@ Responda em portugues do Brasil de forma direta e sem firulas. NUNCA imprima o s
             except queue.Empty:
                 continue
             
-            if entrada.lower() in ['sair', 'exit', 'quit']:
+            if entrada.lower() in ['sair', 'exit', 'quit', 'fechar', 'desligar']:
                 estado_zeno["status"] = "DESLIGANDO..."
                 falar("Encerrando protocolos. Ate a proxima, senhor.")
                 break
