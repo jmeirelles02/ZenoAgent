@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zeno System</title>
     <style>
-      body, html {
+      body,
+      html {
         margin: 0;
         padding: 0;
         width: 100vw;
@@ -15,20 +16,22 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        font-family: 'Arial', sans-serif;
+        font-family: "Arial", sans-serif;
         color: #00f3ff;
       }
 
       .zeno-hud-container {
-        width: 580px;
-        height: 520px;
+        width: 750px;
+        height: 680px;
         background-color: rgba(0, 10, 20, 0.85);
         border: 1px solid rgba(0, 243, 255, 0.2);
         border-radius: 20px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        box-shadow: inset 0 0 30px rgba(0, 243, 255, 0.05), 0 0 20px rgba(0, 243, 255, 0.1);
+        box-shadow:
+          inset 0 0 30px rgba(0, 243, 255, 0.05),
+          0 0 20px rgba(0, 243, 255, 0.1);
         -webkit-app-region: drag;
         user-select: none;
       }
@@ -43,8 +46,8 @@
 
       .arc-reactor {
         position: relative;
-        width: 220px;
-        height: 220px;
+        width: 240px;
+        height: 240px;
         margin-top: 20px;
         display: flex;
         justify-content: center;
@@ -57,15 +60,15 @@
       }
 
       .outer-ring {
-        width: 210px;
-        height: 210px;
+        width: 230px;
+        height: 230px;
         border: 2px dashed rgba(0, 243, 255, 0.4);
         animation: spin 12s linear infinite;
       }
 
       .middle-ring {
-        width: 160px;
-        height: 160px;
+        width: 180px;
+        height: 180px;
         border: 3px solid rgba(0, 150, 255, 0.2);
         border-top-color: #00f3ff;
         border-bottom-color: #00f3ff;
@@ -73,20 +76,29 @@
       }
 
       .inner-ring {
-        width: 110px;
-        height: 110px;
+        width: 130px;
+        height: 130px;
         border: 2px dotted #00f3ff;
         animation: spin 5s linear infinite;
         transition: border-color 0.3s ease;
       }
 
       .core {
-        width: 60px;
-        height: 60px;
-        background: radial-gradient(circle, #ffffff 0%, #00f3ff 40%, rgba(0, 150, 255, 0.6) 100%);
-        box-shadow: 0 0 30px #00f3ff, 0 0 60px #00f3ff;
+        width: 70px;
+        height: 70px;
+        background: radial-gradient(
+          circle,
+          #ffffff 0%,
+          #00f3ff 40%,
+          rgba(0, 150, 255, 0.6) 100%
+        );
+        box-shadow:
+          0 0 30px #00f3ff,
+          0 0 60px #00f3ff;
         animation: simbiose_calma 4s ease-in-out infinite;
-        transition: background 0.3s ease, box-shadow 0.3s ease;
+        transition:
+          background 0.3s ease,
+          box-shadow 0.3s ease;
       }
 
       .core.agitada {
@@ -94,41 +106,82 @@
       }
 
       @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
       }
 
       @keyframes spin-reverse {
-        0% { transform: rotate(360deg); }
-        100% { transform: rotate(0deg); }
+        0% {
+          transform: rotate(360deg);
+        }
+        100% {
+          transform: rotate(0deg);
+        }
       }
 
       @keyframes simbiose_calma {
-        0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: scale(0.95) rotate(0deg); opacity: 0.8; }
-        50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: scale(1.05) rotate(15deg); opacity: 1; }
-        100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: scale(0.95) rotate(30deg); opacity: 0.8; }
+        0% {
+          border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+          transform: scale(0.95) rotate(0deg);
+          opacity: 0.8;
+        }
+        50% {
+          border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+          transform: scale(1.05) rotate(15deg);
+          opacity: 1;
+        }
+        100% {
+          border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+          transform: scale(0.95) rotate(30deg);
+          opacity: 0.8;
+        }
       }
 
       @keyframes simbiose_agitada {
-        0% { border-radius: 40% 60% 50% 50% / 40% 50% 60% 50%; transform: scale(1.1) rotate(0deg); }
-        100% { border-radius: 70% 30% 40% 60% / 50% 40% 70% 30%; transform: scale(1.2) rotate(45deg); }
+        0% {
+          border-radius: 40% 60% 50% 50% / 40% 50% 60% 50%;
+          transform: scale(1.1) rotate(0deg);
+        }
+        100% {
+          border-radius: 70% 30% 40% 60% / 50% 40% 70% 30%;
+          transform: scale(1.2) rotate(45deg);
+        }
       }
 
       .zeno-log {
         width: 85%;
         margin-top: 20px;
-        font-size: 13px;
+        font-size: 14px;
+        line-height: 1.5;
         color: #bdf8ff;
         background-color: rgba(0, 20, 40, 0.6);
-        padding: 12px;
+        padding: 15px;
         border-left: 3px solid #00f3ff;
         border-radius: 4px;
-        height: 60px;
-        overflow-y: hidden;
+        height: 140px;
+        overflow-y: auto;
+        word-wrap: break-word;
+      }
+
+      .zeno-log::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .zeno-log::-webkit-scrollbar-track {
+        background: rgba(0, 20, 40, 0.8);
+      }
+
+      .zeno-log::-webkit-scrollbar-thumb {
+        background: #00f3ff;
+        border-radius: 3px;
       }
 
       .zeno-status {
-        margin-top: 15px;
+        margin-top: auto;
         font-size: 12px;
         font-weight: bold;
         letter-spacing: 3px;
@@ -139,7 +192,7 @@
       .input-area {
         display: flex;
         width: 85%;
-        margin-top: auto;
+        margin-top: 15px;
         margin-bottom: 20px;
         gap: 10px;
         -webkit-app-region: no-drag;
@@ -163,7 +216,8 @@
         color: #00f3ff;
         padding: 10px 15px;
         cursor: pointer;
-        font-size: 16px;
+        font-size: 14px;
+        font-weight: bold;
         transition: background 0.3s;
       }
 
@@ -176,99 +230,132 @@
   <body>
     <div class="zeno-hud-container">
       <div class="zeno-header">ZENO</div>
-      
+
       <div class="arc-reactor">
         <div class="ring outer-ring"></div>
         <div class="ring middle-ring"></div>
         <div class="ring inner-ring" id="inner-ring"></div>
         <div class="core" id="core-light"></div>
       </div>
-      
-      <div class="zeno-log">
+
+      <div class="zeno-log" id="log-container">
         <p>> USER: <span id="log-usuario">Aguardando conexão...</span></p>
         <p>> ZENO: <span id="log-zeno">Sistemas iniciados...</span></p>
       </div>
-      
+
       <div class="zeno-status" id="status-text">[ STANDBY ]</div>
 
       <div class="input-area">
-        <button class="btn-voz" id="btn-voz" title="Falar com o Zeno">🎙️</button>
-        <input type="text" class="input-texto" id="input-texto" placeholder="Digite seu comando aqui..." autocomplete="off" />
+        <button class="btn-voz" id="btn-voz">🎙️</button>
+        <input
+          type="text"
+          class="input-texto"
+          id="input-texto"
+          placeholder="Digite seu comando..."
+          autocomplete="off"
+        />
       </div>
     </div>
 
     <script>
-      const logUsuario = document.getElementById('log-usuario');
-      const logZeno = document.getElementById('log-zeno');
-      const statusText = document.getElementById('status-text');
-      const coreLight = document.getElementById('core-light');
-      const innerRing = document.getElementById('inner-ring');
-      const inputTexto = document.getElementById('input-texto');
-      const btnVoz = document.getElementById('btn-voz');
+      const logUsuario = document.getElementById("log-usuario");
+      const logZeno = document.getElementById("log-zeno");
+      const statusText = document.getElementById("status-text");
+      const coreLight = document.getElementById("core-light");
+      const innerRing = document.getElementById("inner-ring");
+      const inputTexto = document.getElementById("input-texto");
+      const btnVoz = document.getElementById("btn-voz");
+      const logContainer = document.getElementById("log-container");
+
+      let textoAnterior = "";
 
       async function enviarComando(texto) {
         if (!texto) return;
-        inputTexto.value = '';
+        inputTexto.value = "";
         try {
-          await fetch('http://localhost:5000/enviar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ comando: texto })
+          await fetch("http://localhost:5000/enviar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ comando: texto }),
           });
         } catch (erro) {
-          console.error("Erro ao enviar comando:", erro);
+          console.error(erro);
         }
       }
 
-      inputTexto.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
+      inputTexto.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
           enviarComando(inputTexto.value);
         }
       });
 
-      btnVoz.addEventListener('click', function () {
-        enviarComando('[VOZ]');
+      btnVoz.addEventListener("click", function () {
+        if (btnVoz.innerText === "PARAR") {
+          enviarComando("[CANCELAR]");
+        } else {
+          enviarComando("[VOZ]");
+        }
       });
 
       setInterval(async () => {
         try {
-          const resposta = await fetch('http://localhost:5000/estado');
+          const resposta = await fetch("http://localhost:5000/estado");
           const dados = await resposta.json();
-          
+
           logUsuario.innerText = dados.usuario;
-          logZeno.innerText = dados.zeno;
+
+          if (textoAnterior !== dados.zeno) {
+            logZeno.innerText = dados.zeno;
+            textoAnterior = dados.zeno;
+            logContainer.scrollTop = logContainer.scrollHeight;
+          }
+
           statusText.innerText = `[ ${dados.status} ]`;
-          
+
           let statusStr = dados.status;
-          
+
           if (statusStr === "FALANDO...") {
-            coreLight.classList.add('agitada');
+            coreLight.classList.add("agitada");
           } else {
-            coreLight.classList.remove('agitada');
+            coreLight.classList.remove("agitada");
           }
 
           if (statusStr === "OUVINDO...") {
-            statusText.style.color = '#ffb700';
-            coreLight.style.background = 'radial-gradient(circle, #ffffff 0%, #ffb700 40%, rgba(255, 150, 0, 0.6) 100%)';
-            coreLight.style.boxShadow = '0 0 30px #ffb700, 0 0 60px #ffb700';
-            innerRing.style.borderColor = '#ffb700';
+            btnVoz.innerText = "PARAR";
+            btnVoz.style.color = "#ffb700";
+            btnVoz.style.borderColor = "#ffb700";
+
+            statusText.style.color = "#ffb700";
+            coreLight.style.background =
+              "radial-gradient(circle, #ffffff 0%, #ffb700 40%, rgba(255, 150, 0, 0.6) 100%)";
+            coreLight.style.boxShadow = "0 0 30px #ffb700, 0 0 60px #ffb700";
+            innerRing.style.borderColor = "#ffb700";
           } else if (statusStr === "PENSANDO...") {
-            statusText.style.color = '#ffffff';
-            coreLight.style.background = 'radial-gradient(circle, #ffffff 0%, #dddddd 40%, rgba(255, 255, 255, 0.6) 100%)';
-            coreLight.style.boxShadow = '0 0 30px #ffffff, 0 0 60px #ffffff';
-            innerRing.style.borderColor = '#ffffff';
+            btnVoz.innerText = "PARAR";
+            btnVoz.style.color = "#ffffff";
+            btnVoz.style.borderColor = "#ffffff";
+
+            statusText.style.color = "#ffffff";
+            coreLight.style.background =
+              "radial-gradient(circle, #ffffff 0%, #dddddd 40%, rgba(255, 255, 255, 0.6) 100%)";
+            coreLight.style.boxShadow = "0 0 30px #ffffff, 0 0 60px #ffffff";
+            innerRing.style.borderColor = "#ffffff";
           } else {
+            btnVoz.innerText = "🎙️";
+            btnVoz.style.color = '#00f3ff';
+            btnVoz.style.borderColor = '#00f3ff';
+
             statusText.style.color = '#00f3ff';
             coreLight.style.background = 'radial-gradient(circle, #ffffff 0%, #00f3ff 40%, rgba(0, 150, 255, 0.6) 100%)';
             coreLight.style.boxShadow = '0 0 30px #00f3ff, 0 0 60px #00f3ff';
             innerRing.style.borderColor = '#00f3ff';
           }
         } catch (erro) {
-          statusText.innerText = '[ SINAL PERDIDO ]';
-          statusText.style.color = 'red';
-          coreLight.style.background = 'red';
-          coreLight.style.boxShadow = '0 0 30px red';
-          coreLight.classList.remove('agitada');
+          statusText.innerText = "[ SINAL PERDIDO ]";
+          statusText.style.color = "red";
+          coreLight.style.background = "red";
+          coreLight.style.boxShadow = "0 0 30px red";
+          coreLight.classList.remove("agitada");
         }
       }, 500);
     </script>

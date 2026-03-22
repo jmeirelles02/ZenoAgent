@@ -44,7 +44,16 @@ def receber_comando():
     dados = request.json
     comando = dados.get('comando', '')
     if comando:
-        fila_comandos.put(comando)
+        if comando == "[CANCELAR]":
+            pygame.mixer.music.stop()
+            with fila_comandos.mutex:
+                fila_comandos.queue.clear()
+        elif comando == "[VOZ]":
+            with fila_comandos.mutex:
+                fila_comandos.queue.clear()
+            fila_comandos.put(comando)
+        else:
+            fila_comandos.put(comando)
     return jsonify({"status": "recebido"})
 
 def rodar_servidor():
@@ -221,7 +230,7 @@ def iniciar_zeno_core():
     memoria_banco = carregar_memoria(usuario_db)
 
     instrucoes_sistema = f"""Voce e o Zeno, um assistente virtual de elite.
-Voce TEM PERMISSAO TOTAL para executar comandos no Windows do usuario. NUNCA diga que nao pode abrir programas.
+Voce TEM PERMISSAO PARCIAL para executar comandos no Windows do usuario. NUNCA diga que nao pode abrir programas.
 O diretorio da Area de Trabalho e: {caminho_desktop}
 
 MEMORIA DE CONTEXTO PESSOAL:
