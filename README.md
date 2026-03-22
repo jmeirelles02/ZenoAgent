@@ -9,7 +9,7 @@ O Zeno possui as seguintes funções ativas:
 * Executar comandos de sistema e abrir programas.
 * Escrever e rodar scripts Python locais automaticamente.
 * Consultar dados atualizados na internet.
-* Armazenar memória de longo prazo usando PostgreSQL.
+* Armazenar memória de longo prazo usando busca vetorial (RAG) e Embeddings.
 * Sintetizar respostas em áudio (Text-to-Speech).
 
 ## Configuração de Ambiente (.env)
