@@ -251,7 +251,8 @@ def iniciar_zeno_core():
     usuario_db = "Joao"
 
     instrucoes_sistema = f"""Voce e o Zeno, um assistente virtual de elite.
-Voce TEM PERMISSAO PARCIAL para executar comandos no Windows do usuario. NUNCA diga que nao pode abrir programas.
+Voce TEM PERMISSAO PARCIAL para executar comandos no Windows do usuario. Antes de realizar uma ação que possa ser vital, pergunte ao usuario.
+NUNCA diga que nao pode abrir programas.
 O diretorio da Area de Trabalho e: {caminho_desktop}
 
 MEMORIA DE CONTEXTO PESSOAL:
@@ -272,7 +273,7 @@ REGRAS PARA PROCESSAMENTO DE DADOS (ETL):
 4. NUNCA use caminhos relativos.
 
 COMUNICACAO:
-Responda em portugues do Brasil de forma direta e sem firulas. NUNCA imprima o seu raciocinio de etapas na tela."""
+Responda em portugues do Brasil de forma direta e sem distraçao. NUNCA imprima o seu raciocinio de etapas na tela."""
 
     configuracao_chat = types.GenerateContentConfig(
         system_instruction=instrucoes_sistema,
