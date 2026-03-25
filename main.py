@@ -119,9 +119,9 @@ def loop_principal(chat) -> None:
                 detector_ww.pausar()
 
             if entrada.lower() in COMANDOS_SAIDA:
-                estado.atualizar(status="DESLIGANDO...")
-                falar("Encerrando protocolos. Ate a proxima, senhor.")
-                break
+                falar("Indo para segundo plano, senhor. Diga Zeno quando precisar de mim.")
+                estado.atualizar(status="SEGUNDO_PLANO")
+                continue
 
             pergunta = resolver_entrada(entrada)
             if not pergunta:

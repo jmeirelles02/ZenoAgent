@@ -542,6 +542,28 @@
         btnVoz.style.borderColor = `rgba(${t.cor === '#00f3ff' ? '0,243,255' : t.cor === '#ffb700' ? '255,183,0' : '255,255,255'}, 0.3)`;
       }
 
+      // ── WINDOW CONTROL ──
+      let janelaOculta = false;
+
+      async function esconderJanela() {
+        if (janelaOculta) return;
+        try {
+          const { getCurrentWindow } = window.__TAURI__.window;
+          await getCurrentWindow().hide();
+          janelaOculta = true;
+        } catch (e) { console.error("Erro ao esconder janela:", e); }
+      }
+
+      async function mostrarJanela() {
+        if (!janelaOculta) return;
+        try {
+          const { getCurrentWindow } = window.__TAURI__.window;
+          await getCurrentWindow().show();
+          await getCurrentWindow().setFocus();
+          janelaOculta = false;
+        } catch (e) { console.error("Erro ao mostrar janela:", e); }
+      }
+
       // ── POLLING ──
       setInterval(async () => {
         try {
@@ -552,6 +574,14 @@
           renderizarHistorico(dados.historico || []);
 
           const s = dados.status;
+
+          // Controle de visibilidade da janela
+          if (s === "SEGUNDO_PLANO") {
+            esconderJanela();
+            return;
+          } else if (janelaOculta) {
+            mostrarJanela();
+          }
 
           coreLight.classList.remove("agitada", "pulsando");
 
