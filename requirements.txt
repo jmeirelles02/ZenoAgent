@@ -11,3 +11,7 @@ python-dotenv>=1.0
 yfinance>=0.2
 google-auth-oauthlib>=1.0
 google-api-python-client>=2.0
+psutil>=5.9
+requests>=2.31
+vosk>=0.3
+PyAudio>=0.2

@@ -20,7 +20,12 @@ MODELO_EMBEDDING: str = "nomic-embed-text"
 
 PORTA_API: int = 5000
 
-TAGS_OCULTAS: list[str] = ["CMD", "MEM", "PYTHON", "FINANCE", "AGENDA", "DESMARCAR"]
+MAX_HISTORICO: int = 50
+
+TAGS_OCULTAS: list[str] = [
+    "CMD", "MEM", "PYTHON", "FINANCE", "AGENDA", "DESMARCAR",
+    "CLIMA", "MEDIA", "EMAIL",
+]
 
 GATILHOS_PESQUISA: list[str] = [
     "pesquise", "busque", "internet", "resultado", "último", "hoje",
@@ -29,4 +34,7 @@ GATILHOS_PESQUISA: list[str] = [
 
 COMANDOS_SAIDA: list[str] = ["sair", "exit", "quit", "fechar", "desligar"]
 
-ESCOPOS_CALENDAR: list[str] = ["https://www.googleapis.com/auth/calendar.events"]
+ESCOPOS_GOOGLE: list[str] = [
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/gmail.readonly",
+]

@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zeno System</title>
     <style>
-      body,
-      html {
-        margin: 0;
-        padding: 0;
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body, html {
         width: 100vw;
         height: 100vh;
         background-color: transparent;
@@ -16,15 +15,15 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        font-family: "Arial", sans-serif;
+        font-family: 'Segoe UI', Arial, sans-serif;
         color: #00f3ff;
       }
 
       .zeno-hud-container {
-        width: 750px;
-        height: 680px;
-        background-color: rgba(0, 10, 20, 0.85);
-        border: 1px solid rgba(0, 243, 255, 0.2);
+        width: 800px;
+        height: 720px;
+        background-color: rgba(0, 10, 20, 0.9);
+        border: 1px solid rgba(0, 243, 255, 0.15);
         border-radius: 20px;
         display: flex;
         flex-direction: column;
@@ -36,222 +35,355 @@
         user-select: none;
       }
 
-      .zeno-header {
-        margin-top: 20px;
-        font-size: 18px;
-        letter-spacing: 6px;
+      /* ── HEADER ── */
+      .zeno-top-bar {
+        width: 92%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(0, 243, 255, 0.1);
+      }
+
+      .zeno-title {
+        font-size: 16px;
+        letter-spacing: 8px;
         color: #bdf8ff;
-        text-shadow: 0 0 10px #00f3ff;
+        text-shadow: 0 0 8px rgba(0, 243, 255, 0.4);
+      }
+
+      .zeno-clock {
+        font-size: 13px;
+        color: rgba(189, 248, 255, 0.6);
+        letter-spacing: 2px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ── MAIN AREA ── */
+      .zeno-main {
+        display: flex;
+        width: 92%;
+        flex: 1;
+        gap: 14px;
+        margin-top: 12px;
+        overflow: hidden;
+      }
+
+      /* ── LEFT: REACTOR + METRICS ── */
+      .zeno-left {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 220px;
+        flex-shrink: 0;
       }
 
       .arc-reactor {
         position: relative;
-        width: 240px;
-        height: 240px;
-        margin-top: 20px;
+        width: 180px;
+        height: 180px;
         display: flex;
         justify-content: center;
         align-items: center;
       }
 
-      .ring {
-        position: absolute;
-        border-radius: 50%;
-      }
+      .ring { position: absolute; border-radius: 50%; }
 
       .outer-ring {
-        width: 230px;
-        height: 230px;
-        border: 2px dashed rgba(0, 243, 255, 0.4);
+        width: 175px; height: 175px;
+        border: 2px dashed rgba(0, 243, 255, 0.3);
         animation: spin 12s linear infinite;
       }
 
       .middle-ring {
-        width: 180px;
-        height: 180px;
-        border: 3px solid rgba(0, 150, 255, 0.2);
+        width: 135px; height: 135px;
+        border: 2px solid rgba(0, 150, 255, 0.15);
         border-top-color: #00f3ff;
         border-bottom-color: #00f3ff;
         animation: spin-reverse 8s linear infinite;
       }
 
       .inner-ring {
-        width: 130px;
-        height: 130px;
+        width: 100px; height: 100px;
         border: 2px dotted #00f3ff;
         animation: spin 5s linear infinite;
         transition: border-color 0.3s ease;
       }
 
       .core {
-        width: 70px;
-        height: 70px;
-        background: radial-gradient(
-          circle,
-          #ffffff 0%,
-          #00f3ff 40%,
-          rgba(0, 150, 255, 0.6) 100%
-        );
-        box-shadow:
-          0 0 30px #00f3ff,
-          0 0 60px #00f3ff;
+        width: 55px; height: 55px;
+        background: radial-gradient(circle, #fff 0%, #00f3ff 40%, rgba(0,150,255,0.6) 100%);
+        box-shadow: 0 0 25px #00f3ff, 0 0 50px #00f3ff;
         animation: simbiose_calma 4s ease-in-out infinite;
-        transition:
-          background 0.3s ease,
-          box-shadow 0.3s ease;
+        transition: background 0.3s, box-shadow 0.3s, transform 0.1s;
       }
 
-      .core.agitada {
-        animation: simbiose_agitada 0.3s linear infinite alternate;
-      }
+      .core.agitada { animation: simbiose_agitada 0.3s linear infinite alternate; }
+      .core.pulsando { animation: pulso_voz 0.15s ease-in-out infinite alternate; }
 
-      @keyframes spin {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-
-      @keyframes spin-reverse {
-        0% {
-          transform: rotate(360deg);
-        }
-        100% {
-          transform: rotate(0deg);
-        }
-      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes spin-reverse { to { transform: rotate(-360deg); } }
 
       @keyframes simbiose_calma {
-        0% {
-          border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-          transform: scale(0.95) rotate(0deg);
-          opacity: 0.8;
-        }
-        50% {
-          border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
-          transform: scale(1.05) rotate(15deg);
-          opacity: 1;
-        }
-        100% {
-          border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-          transform: scale(0.95) rotate(30deg);
-          opacity: 0.8;
-        }
+        0%   { border-radius: 60% 40% 30% 70%/60% 30% 70% 40%; transform: scale(0.95); opacity: 0.8; }
+        50%  { border-radius: 30% 60% 70% 40%/50% 60% 30% 60%; transform: scale(1.05); opacity: 1; }
+        100% { border-radius: 60% 40% 30% 70%/60% 30% 70% 40%; transform: scale(0.95); opacity: 0.8; }
       }
 
       @keyframes simbiose_agitada {
-        0% {
-          border-radius: 40% 60% 50% 50% / 40% 50% 60% 50%;
-          transform: scale(1.1) rotate(0deg);
-        }
-        100% {
-          border-radius: 70% 30% 40% 60% / 50% 40% 70% 30%;
-          transform: scale(1.2) rotate(45deg);
-        }
+        0%   { border-radius: 40% 60% 50% 50%/40% 50% 60% 50%; transform: scale(1.1); }
+        100% { border-radius: 70% 30% 40% 60%/50% 40% 70% 30%; transform: scale(1.2); }
       }
 
-      .zeno-log {
-        width: 85%;
-        margin-top: 20px;
-        font-size: 14px;
-        line-height: 1.5;
+      @keyframes pulso_voz {
+        0%   { transform: scale(1.0); box-shadow: 0 0 25px #00f3ff, 0 0 50px #00f3ff; }
+        100% { transform: scale(1.15); box-shadow: 0 0 40px #00f3ff, 0 0 80px #00f3ff; }
+      }
+
+      /* ── SYSTEM METRICS ── */
+      .metrics-panel {
+        width: 100%;
+        margin-top: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .metric-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: rgba(189, 248, 255, 0.7);
+      }
+
+      .metric-label { letter-spacing: 1px; }
+
+      .metric-bar-bg {
+        width: 100px;
+        height: 6px;
+        background: rgba(0, 243, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .metric-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #00f3ff, #0080ff);
+        border-radius: 3px;
+        transition: width 0.5s ease;
+      }
+
+      .metric-bar-fill.alerta {
+        background: linear-gradient(90deg, #ff6b35, #ff2222);
+      }
+
+      .metric-value {
+        width: 38px;
+        text-align: right;
+        font-variant-numeric: tabular-nums;
         color: #bdf8ff;
-        background-color: rgba(0, 20, 40, 0.6);
-        padding: 15px;
-        border-left: 3px solid #00f3ff;
-        border-radius: 4px;
-        height: 140px;
+      }
+
+      /* ── RIGHT: CHAT + STATUS ── */
+      .zeno-right {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .chat-container {
+        flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
+        padding: 12px;
+        background: rgba(0, 15, 30, 0.5);
+        border: 1px solid rgba(0, 243, 255, 0.08);
+        border-radius: 8px;
         -webkit-app-region: no-drag;
         user-select: text;
         cursor: default;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
 
-      .zeno-log::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      .zeno-log::-webkit-scrollbar-track {
-        background: rgba(0, 20, 40, 0.8);
-      }
-
-      .zeno-log::-webkit-scrollbar-thumb {
-        background: #00f3ff;
+      .chat-container::-webkit-scrollbar { width: 5px; }
+      .chat-container::-webkit-scrollbar-track { background: transparent; }
+      .chat-container::-webkit-scrollbar-thumb {
+        background: rgba(0, 243, 255, 0.3);
         border-radius: 3px;
       }
 
-      .zeno-status {
-        margin-top: auto;
+      .msg {
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.5;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 95%;
+        animation: fadeIn 0.2s ease;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      .msg-usuario {
+        align-self: flex-end;
+        background: rgba(0, 243, 255, 0.1);
+        border: 1px solid rgba(0, 243, 255, 0.2);
+        color: #bdf8ff;
+      }
+
+      .msg-zeno {
+        align-self: flex-start;
+        background: rgba(0, 60, 120, 0.15);
+        border: 1px solid rgba(0, 100, 200, 0.15);
+        color: rgba(189, 248, 255, 0.9);
+      }
+
+      .msg-tag {
+        font-size: 10px;
+        margin-bottom: 2px;
+        letter-spacing: 2px;
+        opacity: 0.5;
+      }
+
+      .chat-vazio {
+        color: rgba(189, 248, 255, 0.3);
         font-size: 12px;
+        text-align: center;
+        margin-top: 40px;
+        letter-spacing: 2px;
+      }
+
+      /* ── STATUS BAR ── */
+      .zeno-status-bar {
+        width: 92%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(0, 243, 255, 0.1);
+      }
+
+      .zeno-status {
+        font-size: 11px;
         font-weight: bold;
         letter-spacing: 3px;
-        color: #00f3ff;
         text-transform: uppercase;
       }
 
+      /* ── INPUT ── */
       .input-area {
         display: flex;
-        width: 85%;
-        margin-top: 15px;
-        margin-bottom: 20px;
-        gap: 10px;
+        width: 92%;
+        margin-top: 8px;
+        margin-bottom: 14px;
+        gap: 8px;
         -webkit-app-region: no-drag;
       }
 
       .input-texto {
         flex: 1;
         background-color: rgba(0, 20, 40, 0.8);
-        border: 1px solid #00f3ff;
-        border-radius: 5px;
-        color: #00f3ff;
-        padding: 10px;
-        font-size: 14px;
+        border: 1px solid rgba(0, 243, 255, 0.3);
+        border-radius: 8px;
+        color: #bdf8ff;
+        padding: 10px 14px;
+        font-size: 13px;
         outline: none;
+        transition: border-color 0.2s;
       }
 
-      .btn-voz {
+      .input-texto:focus { border-color: #00f3ff; }
+
+      .btn-acao {
         background-color: rgba(0, 20, 40, 0.8);
-        border: 1px solid #00f3ff;
-        border-radius: 5px;
+        border: 1px solid rgba(0, 243, 255, 0.3);
+        border-radius: 8px;
         color: #00f3ff;
-        padding: 10px 15px;
+        padding: 10px 14px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: bold;
-        transition: background 0.3s;
+        transition: all 0.2s;
+        -webkit-app-region: no-drag;
       }
 
-      .btn-voz:hover {
-        background-color: #00f3ff;
-        color: #000;
+      .btn-acao:hover {
+        background-color: rgba(0, 243, 255, 0.15);
+        border-color: #00f3ff;
       }
     </style>
   </head>
   <body>
     <div class="zeno-hud-container">
-      <div class="zeno-header">ZENO</div>
 
-      <div class="arc-reactor">
-        <div class="ring outer-ring"></div>
-        <div class="ring middle-ring"></div>
-        <div class="ring inner-ring" id="inner-ring"></div>
-        <div class="core" id="core-light"></div>
+      <!-- TOP BAR -->
+      <div class="zeno-top-bar">
+        <div class="zeno-title">ZENO</div>
+        <div class="zeno-clock" id="clock">00:00:00</div>
       </div>
 
-      <div class="zeno-log" id="log-container">
-        <p>> USER: <span id="log-usuario">Aguardando conexão...</span></p>
-        <p>> ZENO: <span id="log-zeno">Sistemas iniciados...</span></p>
+      <!-- MAIN AREA -->
+      <div class="zeno-main">
+
+        <!-- LEFT: Reactor + Metrics -->
+        <div class="zeno-left">
+          <div class="arc-reactor">
+            <div class="ring outer-ring"></div>
+            <div class="ring middle-ring"></div>
+            <div class="ring inner-ring" id="inner-ring"></div>
+            <div class="core" id="core-light"></div>
+          </div>
+
+          <div class="metrics-panel" id="metrics-panel">
+            <div class="metric-row">
+              <span class="metric-label">CPU</span>
+              <div class="metric-bar-bg"><div class="metric-bar-fill" id="bar-cpu"></div></div>
+              <span class="metric-value" id="val-cpu">--%</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">RAM</span>
+              <div class="metric-bar-bg"><div class="metric-bar-fill" id="bar-ram"></div></div>
+              <span class="metric-value" id="val-ram">--%</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">DISCO</span>
+              <div class="metric-bar-bg"><div class="metric-bar-fill" id="bar-disco"></div></div>
+              <span class="metric-value" id="val-disco">--%</span>
+            </div>
+            <div class="metric-row" id="row-bateria" style="display:none">
+              <span class="metric-label">BAT</span>
+              <div class="metric-bar-bg"><div class="metric-bar-fill" id="bar-bat"></div></div>
+              <span class="metric-value" id="val-bat">--%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Chat -->
+        <div class="zeno-right">
+          <div class="chat-container" id="chat-container">
+            <div class="chat-vazio">Inicie uma conversa com o Zeno</div>
+          </div>
+        </div>
       </div>
 
-      <div class="zeno-status" id="status-text">[ STANDBY ]</div>
+      <!-- STATUS BAR -->
+      <div class="zeno-status-bar">
+        <div class="zeno-status" id="status-text">[ STANDBY ]</div>
+      </div>
 
+      <!-- INPUT -->
       <div class="input-area">
-        <button class="btn-voz" id="btn-voz">🎙️</button>
+        <button class="btn-acao" id="btn-voz">🎙️</button>
         <input
           type="text"
           class="input-texto"
@@ -263,29 +395,40 @@
     </div>
 
     <script>
-      const logUsuario = document.getElementById("log-usuario");
-      const logZeno = document.getElementById("log-zeno");
       const statusText = document.getElementById("status-text");
       const coreLight = document.getElementById("core-light");
       const innerRing = document.getElementById("inner-ring");
       const inputTexto = document.getElementById("input-texto");
       const btnVoz = document.getElementById("btn-voz");
-      const logContainer = document.getElementById("log-container");
+      const chatContainer = document.getElementById("chat-container");
+      const clockEl = document.getElementById("clock");
 
-      let textoAnterior = "";
       let zenoToken = "";
+      let ultimoHistLen = 0;
 
+      // ── TOKEN ──
       async function inicializarToken() {
-        try {
-          const resp = await fetch("http://localhost:5000/token");
-          const dados = await resp.json();
-          zenoToken = dados.token;
-        } catch (erro) {
-          console.error("Falha ao obter token:", erro);
+        while (!zenoToken) {
+          try {
+            const resp = await fetch("http://localhost:5000/token");
+            const dados = await resp.json();
+            zenoToken = dados.token;
+          } catch (e) {
+            await new Promise(r => setTimeout(r, 2000));
+          }
         }
       }
       inicializarToken();
 
+      // ── CLOCK ──
+      function atualizarRelogio() {
+        const agora = new Date();
+        clockEl.textContent = agora.toLocaleTimeString("pt-BR", { hour12: false });
+      }
+      setInterval(atualizarRelogio, 1000);
+      atualizarRelogio();
+
+      // ── ENVIAR COMANDO ──
       async function enviarComando(texto) {
         if (!texto) return;
         inputTexto.value = "";
@@ -298,15 +441,13 @@
             },
             body: JSON.stringify({ comando: texto }),
           });
-        } catch (erro) {
-          console.error(erro);
+        } catch (e) {
+          console.error(e);
         }
       }
 
       inputTexto.addEventListener("keypress", function (e) {
-        if (e.key === "Enter") {
-          enviarComando(inputTexto.value);
-        }
+        if (e.key === "Enter") enviarComando(inputTexto.value);
       });
 
       btnVoz.addEventListener("click", function () {
@@ -317,67 +458,122 @@
         }
       });
 
+      // ── RENDER CHAT ──
+      function renderizarHistorico(historico) {
+        if (historico.length === ultimoHistLen) return;
+        ultimoHistLen = historico.length;
+
+        chatContainer.innerHTML = "";
+
+        if (historico.length === 0) {
+          chatContainer.innerHTML = '<div class="chat-vazio">Inicie uma conversa com o Zeno</div>';
+          return;
+        }
+
+        historico.forEach((msg) => {
+          const div = document.createElement("div");
+          const isUser = msg.papel === "usuario";
+          div.className = `msg ${isUser ? "msg-usuario" : "msg-zeno"}`;
+
+          const tag = document.createElement("div");
+          tag.className = "msg-tag";
+          tag.textContent = isUser ? "VOCÊ" : "ZENO";
+          div.appendChild(tag);
+
+          const txt = document.createElement("div");
+          txt.textContent = msg.texto;
+          div.appendChild(txt);
+
+          chatContainer.appendChild(div);
+        });
+
+        requestAnimationFrame(() => {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        });
+      }
+
+      // ── SYSTEM METRICS ──
+      function atualizarMetrica(barId, valId, valor) {
+        const bar = document.getElementById(barId);
+        const val = document.getElementById(valId);
+        if (!bar || !val) return;
+        bar.style.width = valor + "%";
+        val.textContent = valor + "%";
+        if (valor > 85) {
+          bar.classList.add("alerta");
+        } else {
+          bar.classList.remove("alerta");
+        }
+      }
+
+      async function buscarMetricas() {
+        try {
+          const resp = await fetch("http://localhost:5000/sistema");
+          const d = await resp.json();
+          atualizarMetrica("bar-cpu", "val-cpu", Math.round(d.cpu));
+          atualizarMetrica("bar-ram", "val-ram", Math.round(d.ram_usada));
+          atualizarMetrica("bar-disco", "val-disco", Math.round(d.disco_usado));
+
+          if (d.bateria !== null) {
+            document.getElementById("row-bateria").style.display = "flex";
+            atualizarMetrica("bar-bat", "val-bat", Math.round(d.bateria));
+          }
+        } catch (e) {}
+      }
+      setInterval(buscarMetricas, 3000);
+      buscarMetricas();
+
+      // ── CORE COLORS ──
+      const temas = {
+        online:   { cor: "#00f3ff", grad: "radial-gradient(circle, #fff 0%, #00f3ff 40%, rgba(0,150,255,0.6) 100%)" },
+        ouvindo:  { cor: "#ffb700", grad: "radial-gradient(circle, #fff 0%, #ffb700 40%, rgba(255,150,0,0.6) 100%)" },
+        pensando: { cor: "#ffffff", grad: "radial-gradient(circle, #fff 0%, #ddd 40%, rgba(255,255,255,0.6) 100%)" },
+        falando:  { cor: "#00f3ff", grad: "radial-gradient(circle, #fff 0%, #00f3ff 40%, rgba(0,150,255,0.6) 100%)" },
+        erro:     { cor: "red",     grad: "red" },
+      };
+
+      function aplicarTema(chave) {
+        const t = temas[chave] || temas.online;
+        coreLight.style.background = t.grad;
+        coreLight.style.boxShadow = `0 0 25px ${t.cor}, 0 0 50px ${t.cor}`;
+        innerRing.style.borderColor = t.cor;
+        statusText.style.color = t.cor;
+        btnVoz.style.color = t.cor;
+        btnVoz.style.borderColor = `rgba(${t.cor === '#00f3ff' ? '0,243,255' : t.cor === '#ffb700' ? '255,183,0' : '255,255,255'}, 0.3)`;
+      }
+
+      // ── POLLING ──
       setInterval(async () => {
         try {
-          const resposta = await fetch("http://localhost:5000/estado");
-          const dados = await resposta.json();
-
-          logUsuario.innerText = dados.usuario;
-
-          if (textoAnterior !== dados.zeno) {
-            logZeno.innerText = dados.zeno;
-            textoAnterior = dados.zeno;
-            requestAnimationFrame(() => {
-              logContainer.scrollTop = logContainer.scrollHeight;
-            });
-          }
+          const resp = await fetch("http://localhost:5000/estado");
+          const dados = await resp.json();
 
           statusText.innerText = `[ ${dados.status} ]`;
+          renderizarHistorico(dados.historico || []);
 
-          let statusStr = dados.status;
+          const s = dados.status;
 
-          if (statusStr === "FALANDO...") {
+          coreLight.classList.remove("agitada", "pulsando");
+
+          if (s === "FALANDO...") {
+            coreLight.classList.add("pulsando");
+            aplicarTema("falando");
+            btnVoz.innerText = "PARAR";
+          } else if (s === "OUVINDO...") {
+            aplicarTema("ouvindo");
+            btnVoz.innerText = "PARAR";
+          } else if (s === "PENSANDO..." || s === "BUSCANDO NA REDE..." || s === "RECUPERANDO DADOS...") {
             coreLight.classList.add("agitada");
-          } else {
-            coreLight.classList.remove("agitada");
-          }
-
-          if (statusStr === "OUVINDO...") {
+            aplicarTema("pensando");
             btnVoz.innerText = "PARAR";
-            btnVoz.style.color = "#ffb700";
-            btnVoz.style.borderColor = "#ffb700";
-
-            statusText.style.color = "#ffb700";
-            coreLight.style.background =
-              "radial-gradient(circle, #ffffff 0%, #ffb700 40%, rgba(255, 150, 0, 0.6) 100%)";
-            coreLight.style.boxShadow = "0 0 30px #ffb700, 0 0 60px #ffb700";
-            innerRing.style.borderColor = "#ffb700";
-          } else if (statusStr === "PENSANDO...") {
-            btnVoz.innerText = "PARAR";
-            btnVoz.style.color = "#ffffff";
-            btnVoz.style.borderColor = "#ffffff";
-
-            statusText.style.color = "#ffffff";
-            coreLight.style.background =
-              "radial-gradient(circle, #ffffff 0%, #dddddd 40%, rgba(255, 255, 255, 0.6) 100%)";
-            coreLight.style.boxShadow = "0 0 30px #ffffff, 0 0 60px #ffffff";
-            innerRing.style.borderColor = "#ffffff";
           } else {
+            aplicarTema("online");
             btnVoz.innerText = "🎙️";
-            btnVoz.style.color = '#00f3ff';
-            btnVoz.style.borderColor = '#00f3ff';
-
-            statusText.style.color = '#00f3ff';
-            coreLight.style.background = 'radial-gradient(circle, #ffffff 0%, #00f3ff 40%, rgba(0, 150, 255, 0.6) 100%)';
-            coreLight.style.boxShadow = '0 0 30px #00f3ff, 0 0 60px #00f3ff';
-            innerRing.style.borderColor = '#00f3ff';
           }
-        } catch (erro) {
+        } catch (e) {
           statusText.innerText = "[ SINAL PERDIDO ]";
-          statusText.style.color = "red";
-          coreLight.style.background = "red";
-          coreLight.style.boxShadow = "0 0 30px red";
-          coreLight.classList.remove("agitada");
+          aplicarTema("erro");
+          coreLight.classList.remove("agitada", "pulsando");
         }
       }, 500);
     </script>

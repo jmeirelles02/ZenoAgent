@@ -28,33 +28,37 @@ def conectar_banco() -> Generator:
 
 def inicializar_banco() -> None:
     """Cria a extensão pgvector e a tabela de memória se não existirem."""
-    with conectar_banco() as conn:
-        cursor = conn.cursor()
-        cursor.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    try:
+        with conectar_banco() as conn:
+            cursor = conn.cursor()
+            cursor.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
-        cursor.execute("""
-            SELECT column_name FROM information_schema.columns
-            WHERE table_name = 'memoria' AND column_name = 'vetor'
-        """)
-        tabela_valida = cursor.fetchone() is not None
+            cursor.execute("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'memoria' AND column_name = 'vetor'
+            """)
+            tabela_valida = cursor.fetchone() is not None
 
-        cursor.execute("""
-            SELECT to_regclass('public.memoria')
-        """)
-        tabela_existe = cursor.fetchone()[0] is not None
+            cursor.execute("""
+                SELECT to_regclass('public.memoria')
+            """)
+            tabela_existe = cursor.fetchone()[0] is not None
 
-        if tabela_existe and not tabela_valida:
-            logger.warning("Tabela 'memoria' com schema incompatível. Recriando...")
-            cursor.execute("DROP TABLE memoria")
+            if tabela_existe and not tabela_valida:
+                logger.warning("Tabela 'memoria' com schema incompatível. Recriando...")
+                cursor.execute("DROP TABLE memoria")
 
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS memoria (
-                id SERIAL PRIMARY KEY,
-                usuario TEXT,
-                informacao TEXT,
-                vetor vector(768)
-            )
-        """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS memoria (
+                    id SERIAL PRIMARY KEY,
+                    usuario TEXT,
+                    informacao TEXT,
+                    vetor vector(768)
+                )
+            """)
+        logger.info("Banco de dados conectado com sucesso.")
+    except Exception as e:
+        logger.warning("Banco de dados indisponível. Memória desativada: %s", e)
 
 
 def gerar_embedding(texto: str) -> list[float]:
@@ -81,15 +85,18 @@ def dividir_em_chunks(
 
 def salvar_memoria(usuario: str, informacao: str) -> None:
     """Salva informação na memória vetorial dividida em chunks."""
-    pedacos = dividir_em_chunks(informacao)
-    with conectar_banco() as conn:
-        cursor = conn.cursor()
-        for pedaco in pedacos:
-            vetor = gerar_embedding(pedaco)
-            cursor.execute(
-                "INSERT INTO memoria (usuario, informacao, vetor) VALUES (%s, %s, %s)",
-                (usuario, pedaco, str(vetor)),
-            )
+    try:
+        pedacos = dividir_em_chunks(informacao)
+        with conectar_banco() as conn:
+            cursor = conn.cursor()
+            for pedaco in pedacos:
+                vetor = gerar_embedding(pedaco)
+                cursor.execute(
+                    "INSERT INTO memoria (usuario, informacao, vetor) VALUES (%s, %s, %s)",
+                    (usuario, pedaco, str(vetor)),
+                )
+    except Exception as e:
+        logger.warning("Falha ao salvar memória: %s", e)
 
 
 def buscar_memoria_relevante(pergunta: str, limite: int = 3) -> str:

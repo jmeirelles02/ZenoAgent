@@ -8,7 +8,10 @@ from src.calendar_service import criar_evento_calendario, remover_evento_calenda
 from src.commands import executar_comando, executar_python
 from src.config import TAGS_OCULTAS
 from src.database import salvar_memoria
+from src.email_service import listar_emails_recentes
 from src.finance import buscar_cotacao
+from src.media import controlar_midia
+from src.weather import buscar_clima
 
 logger = logging.getLogger(__name__)
 
@@ -74,3 +77,27 @@ def processar_tags_ocultas(
         resultado_dm = remover_evento_calendario(dm.strip())
         print(f"[Google]: {resultado_dm}")
         callback_falar(resultado_dm)
+
+    climas = re.findall(r"\[CLIMA\](.*?)\[/CLIMA\]", texto)
+    for cidade in climas:
+        logger.info("TAG [CLIMA]: %s", cidade.strip())
+        print(f"\n[Buscando clima: {cidade.strip()}]")
+        resultado_clima = buscar_clima(cidade.strip())
+        print(f"[Clima]: {resultado_clima}")
+        callback_falar(resultado_clima)
+
+    medias = re.findall(r"\[MEDIA\](.*?)\[/MEDIA\]", texto)
+    for acao in medias:
+        logger.info("TAG [MEDIA]: %s", acao.strip())
+        print(f"\n[Controle de midia: {acao.strip()}]")
+        resultado_media = controlar_midia(acao.strip())
+        print(f"[Media]: {resultado_media}")
+
+    emails = re.findall(r"\[EMAIL\](.*?)\[/EMAIL\]", texto)
+    for qtd in emails:
+        logger.info("TAG [EMAIL]: %s", qtd.strip())
+        print("\n[Acessando Gmail...]")
+        quantidade = int(qtd.strip()) if qtd.strip().isdigit() else 5
+        resultado_email = listar_emails_recentes(quantidade)
+        print(f"[Gmail]: {resultado_email}")
+        callback_falar(resultado_email)

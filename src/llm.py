@@ -55,6 +55,9 @@ Use APENAS estas tags. Nenhuma tag inventada e permitida.
 - [FINANCE]TICKER[/FINANCE] → Buscar cotacao na bolsa. Acoes brasileiras EXIGEM sufixo .SA.
 - [AGENDA]YYYY-MM-DDTHH:MM:SS|Titulo[/AGENDA] → Criar compromisso no Google Calendar.
 - [DESMARCAR]YYYY-MM-DDTHH:MM:SS|Titulo[/DESMARCAR] → Cancelar compromisso do Google Calendar.
+- [CLIMA]cidade[/CLIMA] → Buscar previsao do tempo de uma cidade.
+- [MEDIA]acao[/MEDIA] → Controle de midia (play, pause, proximo, anterior, mudo).
+- [EMAIL]quantidade[/EMAIL] → Listar ultimos e-mails do Gmail (padrao: 5).
 </TAGS_DISPONIVEIS>
 
 <FLUXO_DE_DECISAO>
@@ -66,7 +69,10 @@ Siga esta ordem para decidir o que fazer:
 5. Quer COTACAO de acao? → Use [FINANCE]. Nao invente valores.
 6. Mencionou FATO PESSOAL novo sobre si mesmo? → Use [MEM].
 7. Quer PROCESSAR ou ANALISAR arquivos? → Use [PYTHON].
-8. Qualquer outra coisa → Responda com texto normal.
+8. Quer saber o CLIMA ou TEMPO de algum lugar? → Use [CLIMA].
+9. Quer CONTROLAR MIDIA (pausar, tocar, pular musica)? → Use [MEDIA].
+10. Quer ver EMAILS recentes? → Use [EMAIL].
+11. Qualquer outra coisa → Responda com texto normal.
 </FLUXO_DE_DECISAO>
 
 <EXEMPLOS>
@@ -76,8 +82,11 @@ Siga esta ordem para decidir o que fazer:
 - Usuario: "quanto esta a Petrobras?" → [FINANCE]PETR4.SA[/FINANCE]
 - Usuario: "abre o YouTube" → [CMD]start https://www.youtube.com[/CMD]
 - Usuario: "meu aniversario e dia 10 de maio" → [MEM]Aniversario do usuario e 10 de maio[/MEM]
+- Usuario: "como esta o tempo em Sao Paulo?" → [CLIMA]Sao Paulo[/CLIMA]
+- Usuario: "pausa a musica" → [MEDIA]pause[/MEDIA]
+- Usuario: "pula essa musica" → [MEDIA]proximo[/MEDIA]
+- Usuario: "tenho emails novos?" → [EMAIL]5[/EMAIL]
 - Usuario: "qual sera o proximo feriado?" → Responda com texto. NAO use tags.
-- Usuario: "procura quando vai ser a final da Copa" → Responda com texto. NAO use tags.
 </EXEMPLOS>"""
 
 

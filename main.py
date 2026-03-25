@@ -19,6 +19,7 @@ from src.speech import falar, ouvir
 from src.state import estado
 from src.tags import limpar_texto_para_fala, processar_tags_ocultas
 from src.utils import obter_caminho_desktop
+from src.wakeword import DetectorWakeWord
 
 logging.basicConfig(
     level=logging.INFO,
@@ -96,17 +97,26 @@ def processar_resposta_streaming(chat, pergunta_formatada: str) -> str:
     return texto_completo
 
 
+detector_ww: DetectorWakeWord | None = None
+
+
 def loop_principal(chat) -> None:
     """Loop principal de interação com o usuário."""
+    global detector_ww
     usuario_db = "Sistema"
 
     while True:
         try:
             estado.atualizar(status="ONLINE")
+            if detector_ww:
+                detector_ww.retomar()
 
             entrada = aguardar_entrada()
             if not entrada:
                 continue
+
+            if detector_ww:
+                detector_ww.pausar()
 
             if entrada.lower() in COMANDOS_SAIDA:
                 estado.atualizar(status="DESLIGANDO...")
@@ -118,10 +128,14 @@ def loop_principal(chat) -> None:
                 continue
 
             estado.atualizar(usuario=pergunta)
+            estado.adicionar_mensagem("usuario", pergunta)
+
             pergunta_formatada = enriquecer_pergunta(pergunta)
             texto_resposta = processar_resposta_streaming(chat, pergunta_formatada)
 
-            estado.atualizar(zeno=limpar_texto_para_fala(texto_resposta))
+            texto_limpo = limpar_texto_para_fala(texto_resposta)
+            estado.atualizar(zeno=texto_limpo)
+            estado.adicionar_mensagem("zeno", texto_limpo)
 
             processar_tags_ocultas(texto_resposta, usuario_db, callback_falar=falar)
             falar(texto_resposta)
@@ -134,6 +148,7 @@ def loop_principal(chat) -> None:
 
 def iniciar_zeno_core() -> None:
     """Inicializa todos os subsistemas e inicia o loop principal."""
+    global detector_ww
     pygame.mixer.init()
 
     print("==================================================")
@@ -142,6 +157,12 @@ def iniciar_zeno_core() -> None:
 
     inicializar_banco()
     iniciar_servidor_api()
+
+    try:
+        detector_ww = DetectorWakeWord(fila_comandos)
+        detector_ww.iniciar()
+    except Exception as e:
+        logger.warning("Wake word indisponível: %s", e)
 
     caminho_desktop = obter_caminho_desktop()
     chat = criar_sessao_chat(caminho_desktop, usuario="Sistema")

@@ -9,7 +9,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from src.config import ESCOPOS_CALENDAR
+from src.config import ESCOPOS_GOOGLE
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +18,14 @@ def autenticar_google():
     """Autentica com a API do Google Calendar via OAuth2."""
     credenciais = None
     if os.path.exists("token.json"):
-        credenciais = Credentials.from_authorized_user_file("token.json", ESCOPOS_CALENDAR)
+        credenciais = Credentials.from_authorized_user_file("token.json", ESCOPOS_GOOGLE)
 
     if not credenciais or not credenciais.valid:
         if credenciais and credenciais.expired and credenciais.refresh_token:
             credenciais.refresh(Request())
         else:
             fluxo = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", ESCOPOS_CALENDAR
+                "credentials.json", ESCOPOS_GOOGLE
             )
             credenciais = fluxo.run_local_server(port=0)
 

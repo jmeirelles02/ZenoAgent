@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from src.config import PORTA_API
 from src.state import estado
+from src.system_monitor import obter_metricas_sistema
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,12 @@ def rota_estado() -> dict:
     return estado.to_dict()
 
 
+@app.get("/sistema")
+def rota_sistema() -> dict:
+    """Retorna métricas de CPU, RAM, disco e bateria."""
+    return obter_metricas_sistema()
+
+
 @app.post("/enviar")
 def receber_comando(
     dados: ComandoRequest, _: None = Depends(verificar_token)
@@ -67,7 +74,7 @@ def receber_comando(
 
 @app.get("/token")
 def obter_token() -> dict:
-    """Endpoint para a UI obter o token de sessão (acessível apenas em localhost)."""
+    """Endpoint para a UI obter o token de sessão."""
     return {"token": TOKEN_SESSAO}
 
 
