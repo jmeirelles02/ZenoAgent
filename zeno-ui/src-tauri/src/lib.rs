@@ -28,6 +28,12 @@ pub fn run() {
                         }
                     }
                     "sair" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.eval(
+                                "fetch('http://localhost:5000/encerrar', { method: 'POST', headers: { 'X-Zeno-Token': zenoToken } })"
+                            );
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(500));
                         app.exit(0);
                     }
                     _ => {}

@@ -60,6 +60,33 @@
         font-variant-numeric: tabular-nums;
       }
 
+      /* ── WINDOW CONTROLS (macOS) ── */
+      .window-controls {
+        display: flex;
+        gap: 8px;
+        -webkit-app-region: no-drag;
+      }
+
+      .win-btn {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        transition: opacity 0.2s, transform 0.1s;
+        opacity: 0.8;
+      }
+
+      .win-btn:hover { opacity: 1; transform: scale(1.15); }
+
+      .win-btn-close {
+        background-color: #ff5f57;
+      }
+
+      .win-btn-minimize {
+        background-color: #febc2e;
+      }
+
       /* ── MAIN AREA ── */
       .zeno-main {
         display: flex;
@@ -113,32 +140,41 @@
 
       .core {
         width: 55px; height: 55px;
+        border-radius: 50%;
         background: radial-gradient(circle, #fff 0%, #00f3ff 40%, rgba(0,150,255,0.6) 100%);
         box-shadow: 0 0 25px #00f3ff, 0 0 50px #00f3ff;
-        animation: simbiose_calma 4s ease-in-out infinite;
-        transition: background 0.3s, box-shadow 0.3s, transform 0.1s;
+        animation: respirar 4s ease-in-out infinite;
+        transition: background 0.3s, box-shadow 0.3s;
       }
 
-      .core.agitada { animation: simbiose_agitada 0.3s linear infinite alternate; }
-      .core.pulsando { animation: pulso_voz 0.15s ease-in-out infinite alternate; }
+      .core.agitada { animation: pensar 1.2s ease-in-out infinite; }
+      .core.pulsando { animation: falar 0.6s ease-in-out infinite; }
 
       @keyframes spin { to { transform: rotate(360deg); } }
       @keyframes spin-reverse { to { transform: rotate(-360deg); } }
 
-      @keyframes simbiose_calma {
-        0%   { border-radius: 60% 40% 30% 70%/60% 30% 70% 40%; transform: scale(0.95); opacity: 0.8; }
-        50%  { border-radius: 30% 60% 70% 40%/50% 60% 30% 60%; transform: scale(1.05); opacity: 1; }
-        100% { border-radius: 60% 40% 30% 70%/60% 30% 70% 40%; transform: scale(0.95); opacity: 0.8; }
+      /* Idle: respiração suave */
+      @keyframes respirar {
+        0%   { transform: scale(0.95); opacity: 0.85; box-shadow: 0 0 20px #00f3ff, 0 0 40px rgba(0,150,255,0.4); }
+        50%  { transform: scale(1.05); opacity: 1;    box-shadow: 0 0 30px #00f3ff, 0 0 60px rgba(0,150,255,0.5); }
+        100% { transform: scale(0.95); opacity: 0.85; box-shadow: 0 0 20px #00f3ff, 0 0 40px rgba(0,150,255,0.4); }
       }
 
-      @keyframes simbiose_agitada {
-        0%   { border-radius: 40% 60% 50% 50%/40% 50% 60% 50%; transform: scale(1.1); }
-        100% { border-radius: 70% 30% 40% 60%/50% 40% 70% 30%; transform: scale(1.2); }
+      /* Thinking: pulsação rápida e energética */
+      @keyframes pensar {
+        0%   { transform: scale(1.0);  box-shadow: 0 0 25px #ffffff, 0 0 50px rgba(255,255,255,0.5); }
+        25%  { transform: scale(1.12); box-shadow: 0 0 35px #ffffff, 0 0 70px rgba(255,255,255,0.6); }
+        50%  { transform: scale(0.98); box-shadow: 0 0 20px #ffffff, 0 0 40px rgba(255,255,255,0.4); }
+        75%  { transform: scale(1.08); box-shadow: 0 0 30px #ffffff, 0 0 60px rgba(255,255,255,0.5); }
+        100% { transform: scale(1.0);  box-shadow: 0 0 25px #ffffff, 0 0 50px rgba(255,255,255,0.5); }
       }
 
-      @keyframes pulso_voz {
-        0%   { transform: scale(1.0); box-shadow: 0 0 25px #00f3ff, 0 0 50px #00f3ff; }
-        100% { transform: scale(1.15); box-shadow: 0 0 40px #00f3ff, 0 0 80px #00f3ff; }
+      /* Speaking: pulso rítmico forte */
+      @keyframes falar {
+        0%   { transform: scale(1.0);  box-shadow: 0 0 25px #00f3ff, 0 0 50px #00f3ff; }
+        30%  { transform: scale(1.18); box-shadow: 0 0 45px #00f3ff, 0 0 90px rgba(0,243,255,0.7); }
+        60%  { transform: scale(1.02); box-shadow: 0 0 20px #00f3ff, 0 0 45px rgba(0,243,255,0.4); }
+        100% { transform: scale(1.0);  box-shadow: 0 0 25px #00f3ff, 0 0 50px #00f3ff; }
       }
 
       /* ── SYSTEM METRICS ── */
@@ -328,6 +364,10 @@
 
       <!-- TOP BAR -->
       <div class="zeno-top-bar">
+        <div class="window-controls">
+          <button class="win-btn win-btn-close" id="btn-close" title="Minimizar para bandeja"></button>
+          <button class="win-btn win-btn-minimize" id="btn-minimize" title="Minimizar"></button>
+        </div>
         <div class="zeno-title">ZENO</div>
         <div class="zeno-clock" id="clock">00:00:00</div>
       </div>
@@ -427,6 +467,21 @@
       }
       setInterval(atualizarRelogio, 1000);
       atualizarRelogio();
+
+      // ── WINDOW CONTROLS ──
+      document.getElementById("btn-close").addEventListener("click", async () => {
+        try {
+          const { getCurrentWindow } = window.__TAURI__.window;
+          await getCurrentWindow().hide();
+        } catch (e) { console.error(e); }
+      });
+
+      document.getElementById("btn-minimize").addEventListener("click", async () => {
+        try {
+          const { getCurrentWindow } = window.__TAURI__.window;
+          await getCurrentWindow().minimize();
+        } catch (e) { console.error(e); }
+      });
 
       // ── ENVIAR COMANDO ──
       async function enviarComando(texto) {
@@ -574,14 +629,6 @@
           renderizarHistorico(dados.historico || []);
 
           const s = dados.status;
-
-          // Controle de visibilidade da janela
-          if (s === "SEGUNDO_PLANO") {
-            esconderJanela();
-            return;
-          } else if (janelaOculta) {
-            mostrarJanela();
-          }
 
           coreLight.classList.remove("agitada", "pulsando");
 

@@ -11,7 +11,7 @@ import threading
 import pygame
 
 from src.api import fila_comandos, rodar_servidor
-from src.config import COMANDOS_SAIDA, GATILHOS_PESQUISA
+from src.config import GATILHOS_PESQUISA
 from src.database import buscar_memoria_relevante, inicializar_banco
 from src.llm import criar_sessao_chat
 from src.search import buscar_na_internet
@@ -118,14 +118,10 @@ def loop_principal(chat) -> None:
             if detector_ww:
                 detector_ww.pausar()
 
-            if entrada.lower() in COMANDOS_SAIDA:
-                falar("Indo para segundo plano, senhor. Diga Zeno quando precisar de mim.")
-                estado.atualizar(status="SEGUNDO_PLANO")
-                continue
-
             pergunta = resolver_entrada(entrada)
             if not pergunta:
                 continue
+
 
             estado.atualizar(usuario=pergunta)
             estado.adicionar_mensagem("usuario", pergunta)

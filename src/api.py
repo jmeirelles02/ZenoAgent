@@ -1,8 +1,10 @@
 """Servidor FastAPI para comunicação com a UI do Zeno."""
 
 import logging
+import os
 import queue
 import secrets
+import signal
 
 import pygame
 import uvicorn
@@ -76,6 +78,14 @@ def receber_comando(
 def obter_token() -> dict:
     """Endpoint para a UI obter o token de sessão."""
     return {"token": TOKEN_SESSAO}
+
+
+@app.post("/encerrar")
+def encerrar_sistema(_: None = Depends(verificar_token)) -> dict:
+    """Encerra completamente o processo Python."""
+    logger.info("Encerrando processo Python via /encerrar.")
+    os.kill(os.getpid(), signal.SIGTERM)
+    return {"status": "encerrando"}
 
 
 def rodar_servidor() -> None:
