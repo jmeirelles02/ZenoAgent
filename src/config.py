@@ -24,7 +24,7 @@ MAX_HISTORICO: int = 50
 
 TAGS_OCULTAS: list[str] = [
     "CMD", "MEM", "PYTHON", "FINANCE", "AGENDA", "DESMARCAR",
-    "CLIMA", "MEDIA", "EMAIL",
+    "CLIMA", "MEDIA", "EMAIL", "ABRIR",
 ]
 
 GATILHOS_PESQUISA: list[str] = [

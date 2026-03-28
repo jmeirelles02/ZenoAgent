@@ -5,7 +5,7 @@ import re
 from typing import Callable
 
 from src.calendar_service import criar_evento_calendario, remover_evento_calendario
-from src.commands import executar_comando, executar_python
+from src.commands import executar_comando, executar_python, abrir_aplicativo
 from src.config import TAGS_OCULTAS
 from src.database import salvar_memoria
 from src.email_service import listar_emails_recentes
@@ -40,6 +40,16 @@ def processar_tags_ocultas(
         saida = executar_comando(cmd.strip())
         if saida:
             print(f"[Saida do Sistema]: {saida.strip()}")
+            estado.atualizar(aris=saida.strip())
+            estado.adicionar_mensagem("aris", saida.strip())
+
+    aberturas = re.findall(r"\[ABRIR\](.*?)\[/ABRIR\]", texto, flags=re.DOTALL)
+    for app in aberturas:
+        logger.info("TAG [ABRIR]: %s", app.strip())
+        print(f"\n[Tentando abrir aplicação: {app.strip()}]")
+        saida = abrir_aplicativo(app.strip())
+        if saida:
+            print(f"[Resultado]: {saida.strip()}")
             estado.atualizar(aris=saida.strip())
             estado.adicionar_mensagem("aris", saida.strip())
 

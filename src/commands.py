@@ -50,27 +50,75 @@ def codigo_python_e_seguro(codigo: str) -> tuple[bool, str]:
 
 
 def executar_comando(comando: str) -> str:
-    """Executa um comando no shell do Windows com validação de segurança."""
+    """Executa um comando no shell com validação de segurança e suporte a background."""
     seguro, motivo = comando_e_seguro(comando)
     if not seguro:
         logger.warning("Comando bloqueado: %s | Motivo: %s", comando, motivo)
         return f"Bloqueado: {motivo}"
 
+    # Adiciona '&' se não houver para evitar travar o sistema em apps GUI
+    if not comando.strip().endswith("&"):
+        comando = f"{comando} &"
+
     logger.info("CMD executado: %s", comando)
     try:
-        resultado = subprocess.run(
+        # Usamos Popen para não bloquear o assistente enquanto o app está aberto
+        subprocess.Popen(
             comando,
             shell=True,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=15,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            preexec_fn=os.setpgrp if os.name != 'nt' else None
         )
-        return resultado.stdout
-    except subprocess.TimeoutExpired:
-        return "Erro: O comando bloqueou o sistema e foi cancelado por tempo excedido."
-    except subprocess.CalledProcessError as erro:
-        return erro.stderr
+        return "Comando enviado para execução em segundo plano."
+    except Exception as e:
+        return f"Erro ao executar comando: {str(e)}"
+
+
+def abrir_aplicativo(nome_app: str) -> str:
+    """Tenta localizar e abrir um aplicativo no Linux (Binário, Flatpak ou Snap)."""
+    nome_app = nome_app.lower().strip()
+    
+    # Lista de mapeamentos conhecidos (IDs de flatpak comum)
+    mapeamentos = {
+        "spotify": "com.spotify.Client",
+        "discord": "com.discordapp.Discord",
+        "chrome": "google-chrome",
+        "brave": "brave-browser-stable",
+        "code": "code",
+        "visual studio code": "code",
+        "steam": "com.valvesoftware.Steam"
+    }
+    
+    id_mapeado = mapeamentos.get(nome_app, nome_app)
+
+    # 1. Tentar como binário direto
+    try:
+        if subprocess.run(f"which {id_mapeado}", shell=True, capture_output=True).returncode == 0:
+            return executar_comando(f"{id_mapeado}")
+    except: pass
+
+    # 2. Tentar como Flatpak
+    try:
+        # Busca o ID exato no flatpak list
+        comando_busca = f"flatpak list --columns=application | grep -i {nome_app}"
+        resultado = subprocess.run(comando_busca, shell=True, capture_output=True, text=True)
+        if resultado.returncode == 0:
+            id_flatpak = resultado.stdout.split('\n')[0].strip()
+            return executar_comando(f"flatpak run {id_flatpak}")
+    except: pass
+
+    # 3. Tentar como Snap
+    try:
+        if subprocess.run(f"snap list {nome_app}", shell=True, capture_output=True).returncode == 0:
+            return executar_comando(f"snap run {nome_app}")
+    except: pass
+
+    # 4. Caso comum de navegador para nomes de sites
+    if "." in nome_app or "http" in nome_app:
+        return executar_comando(f"brave-browser-stable {nome_app}")
+
+    return f"Não consegui encontrar o aplicativo '{nome_app}' instalado via binário, Flatpak ou Snap."
 
 
 def executar_python(codigo: str) -> str:
