@@ -11,7 +11,7 @@ from vosk import Model, KaldiRecognizer, SetLogLevel
 
 logger = logging.getLogger(__name__)
 
-WAKE_WORDS: list[str] = ["aris", "ares", "iris", "aries", "ariz", "áris", "áries", "aires", "ari", "hades", "areas"]
+WAKE_WORDS: list[str] = ["aris", "ares", "iris", "aries", "ariz", "áris", "áries", "aires", "ari", "hades", "areas", "áreas"]
 CAMINHO_MODELO: str = "vosk-model-small-pt-0.3"
 TAXA_AMOSTRAGEM: int = 16000
 TAMANHO_BLOCO: int = 8000
