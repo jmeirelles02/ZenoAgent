@@ -35,6 +35,7 @@ class DetectorWakeWord:
 
         SetLogLevel(-1)
         self.modelo = Model(CAMINHO_MODELO)
+        self._audio = pyaudio.PyAudio()
 
     def iniciar(self) -> None:
         """Inicia a escuta da wake word em uma thread daemon."""
@@ -60,6 +61,12 @@ class DetectorWakeWord:
                 self._thread.join(timeout=2.0)
             except RuntimeError:
                 pass
+        if self._audio:
+            try:
+                self._audio.terminate()
+            except Exception:
+                pass
+            self._audio = None
 
     def _loop_escuta(self) -> None:
         """Loop principal de escuta contínua com Vosk."""
@@ -76,14 +83,31 @@ class DetectorWakeWord:
 
     def _escutar_ciclo(self) -> None:
         """Abre o microfone, escuta até detectar a wake word ou ser pausado."""
-        audio = pyaudio.PyAudio()
-        stream = audio.open(
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=TAXA_AMOSTRAGEM,
-            input=True,
-            frames_per_buffer=TAMANHO_BLOCO,
-        )
+        if self._audio is None:
+            self._audio = pyaudio.PyAudio()
+
+        try:
+            stream = self._audio.open(
+                format=pyaudio.paInt16,
+                channels=1,
+                rate=TAXA_AMOSTRAGEM,
+                input=True,
+                frames_per_buffer=TAMANHO_BLOCO,
+            )
+        except Exception:
+            try:
+                self._audio.terminate()
+            except Exception:
+                pass
+            self._audio = pyaudio.PyAudio()
+            stream = self._audio.open(
+                format=pyaudio.paInt16,
+                channels=1,
+                rate=TAXA_AMOSTRAGEM,
+                input=True,
+                frames_per_buffer=TAMANHO_BLOCO,
+            )
+
         reconhecedor = KaldiRecognizer(self.modelo, TAXA_AMOSTRAGEM)
 
         try:
@@ -115,4 +139,3 @@ class DetectorWakeWord:
         finally:
             stream.stop_stream()
             stream.close()
-            audio.terminate()

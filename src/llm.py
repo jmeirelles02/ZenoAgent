@@ -6,7 +6,7 @@ from typing import Generator
 
 import ollama
 
-from src.config import MODELO_CHAT
+from src.config import MAX_HISTORICO_LLM, MODELO_CHAT
 
 
 class SessaoChat:
@@ -21,6 +21,7 @@ class SessaoChat:
     def enviar_mensagem_stream(self, mensagem: str) -> Generator[str, None, None]:
         """Envia uma mensagem e retorna chunks de texto em streaming."""
         self.mensagens.append({"role": "user", "content": mensagem})
+        self._truncar_historico()
 
         resposta_completa = ""
         for chunk in ollama.chat(
@@ -31,6 +32,11 @@ class SessaoChat:
             yield texto
 
         self.mensagens.append({"role": "assistant", "content": resposta_completa})
+
+    def _truncar_historico(self) -> None:
+        """Mantém apenas as últimas N mensagens + system prompt."""
+        if len(self.mensagens) > MAX_HISTORICO_LLM + 1:
+            self.mensagens = [self.mensagens[0]] + self.mensagens[-MAX_HISTORICO_LLM:]
 
 
 def montar_instrucoes_sistema(caminho_desktop: str, usuario: str) -> str:

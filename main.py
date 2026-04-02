@@ -133,8 +133,13 @@ def loop_principal(chat) -> None:
             estado.atualizar(aris=texto_limpo)
             estado.adicionar_mensagem("aris", texto_limpo)
 
-            processar_tags_ocultas(texto_resposta, usuario_db, callback_falar=falar)
-            falar(texto_resposta)
+            resultados_tags = processar_tags_ocultas(texto_resposta, usuario_db)
+
+            # Combina texto do LLM + resultados das tags para fala única
+            texto_para_falar = texto_resposta
+            if resultados_tags:
+                texto_para_falar = f"{texto_resposta}\n{resultados_tags}"
+            falar(texto_para_falar)
 
         except KeyboardInterrupt:
             logger.info("Recebido KeyboardInterrupt. Encerrando...")

@@ -96,7 +96,8 @@ def abrir_aplicativo(nome_app: str) -> str:
     try:
         if subprocess.run(f"which {id_mapeado}", shell=True, capture_output=True).returncode == 0:
             return executar_comando(f"{id_mapeado}")
-    except: pass
+    except Exception:
+        pass
 
     # 2. Tentar como Flatpak
     try:
@@ -106,13 +107,15 @@ def abrir_aplicativo(nome_app: str) -> str:
         if resultado.returncode == 0:
             id_flatpak = resultado.stdout.split('\n')[0].strip()
             return executar_comando(f"flatpak run {id_flatpak}")
-    except: pass
+    except Exception:
+        pass
 
     # 3. Tentar como Snap
     try:
         if subprocess.run(f"snap list {nome_app}", shell=True, capture_output=True).returncode == 0:
             return executar_comando(f"snap run {nome_app}")
-    except: pass
+    except Exception:
+        pass
 
     # 4. Caso comum de navegador para nomes de sites
     if "." in nome_app or "http" in nome_app:

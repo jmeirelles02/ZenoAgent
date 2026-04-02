@@ -21,6 +21,7 @@ MODELO_EMBEDDING: str = "nomic-embed-text"
 PORTA_API: int = 5000
 
 MAX_HISTORICO: int = 50
+MAX_HISTORICO_LLM: int = 20
 
 TAGS_OCULTAS: list[str] = [
     "CMD", "MEM", "PYTHON", "FINANCE", "AGENDA", "DESMARCAR",

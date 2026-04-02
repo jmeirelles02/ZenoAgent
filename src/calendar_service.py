@@ -1,37 +1,18 @@
 """Integração com o Google Calendar."""
 
 import logging
-import os
 from datetime import datetime, timedelta
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-from src.config import ESCOPOS_GOOGLE
+from src.google_auth import autenticar_google
 
 logger = logging.getLogger(__name__)
 
 
-def autenticar_google():
-    """Autentica com a API do Google Calendar via OAuth2."""
-    credenciais = None
-    if os.path.exists("token.json"):
-        credenciais = Credentials.from_authorized_user_file("token.json", ESCOPOS_GOOGLE)
-
-    if not credenciais or not credenciais.valid:
-        if credenciais and credenciais.expired and credenciais.refresh_token:
-            credenciais.refresh(Request())
-        else:
-            fluxo = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", ESCOPOS_GOOGLE
-            )
-            credenciais = fluxo.run_local_server(port=0)
-
-        with open("token.json", "w") as token:
-            token.write(credenciais.to_json())
-
+def _obter_servico():
+    """Obtém o serviço autenticado do Google Calendar."""
+    credenciais = autenticar_google()
     return build("calendar", "v3", credentials=credenciais)
 
 
@@ -48,7 +29,7 @@ def criar_evento_calendario(texto_tag: str) -> str:
         inicio_dt = datetime.fromisoformat(inicio_str)
         fim_dt = inicio_dt + timedelta(hours=1)
 
-        servico = autenticar_google()
+        servico = _obter_servico()
         evento = {
             "summary": resumo,
             "start": {"dateTime": inicio_dt.isoformat(), "timeZone": "America/Sao_Paulo"},
@@ -79,7 +60,7 @@ def remover_evento_calendario(texto_tag: str) -> str:
         inicio_dia = data_ref.replace(hour=0, minute=0, second=0).isoformat() + "Z"
         fim_dia = data_ref.replace(hour=23, minute=59, second=59).isoformat() + "Z"
 
-        servico = autenticar_google()
+        servico = _obter_servico()
         resultado = servico.events().list(
             calendarId="primary",
             timeMin=inicio_dia,

@@ -2,7 +2,6 @@
 
 import logging
 import re
-from typing import Callable
 
 from src.calendar_service import criar_evento_calendario, remover_evento_calendario
 from src.commands import executar_comando, executar_python, abrir_aplicativo
@@ -30,9 +29,15 @@ def limpar_texto_para_fala(texto: str) -> str:
 def processar_tags_ocultas(
     texto: str,
     usuario_atual: str,
-    callback_falar: Callable[[str], None],
-) -> None:
-    """Extrai e executa todas as tags ocultas presentes na resposta do LLM."""
+) -> str:
+    """Extrai e executa todas as tags ocultas presentes na resposta do LLM.
+
+    Retorna os resultados das tags que devem ser falados (FINANCE, CLIMA, etc).
+    A fala é feita pelo chamador para evitar duplicação.
+    """
+    resultados_fala: list[str] = []
+
+    # CMD — não gera fala
     comandos = re.findall(r"\[CMD\](.*?)\[/CMD\]", texto, flags=re.DOTALL)
     for cmd in comandos:
         logger.info("TAG [CMD]: %s", cmd.strip())
@@ -43,6 +48,7 @@ def processar_tags_ocultas(
             estado.atualizar(aris=saida.strip())
             estado.adicionar_mensagem("aris", saida.strip())
 
+    # ABRIR — não gera fala
     aberturas = re.findall(r"\[ABRIR\](.*?)\[/ABRIR\]", texto, flags=re.DOTALL)
     for app in aberturas:
         logger.info("TAG [ABRIR]: %s", app.strip())
@@ -53,6 +59,7 @@ def processar_tags_ocultas(
             estado.atualizar(aris=saida.strip())
             estado.adicionar_mensagem("aris", saida.strip())
 
+    # PYTHON — não gera fala
     blocos_python = re.findall(r"\[PYTHON\](.*?)\[/PYTHON\]", texto, flags=re.DOTALL)
     for codigo in blocos_python:
         logger.info("TAG [PYTHON]: %d caracteres", len(codigo.strip()))
@@ -63,12 +70,14 @@ def processar_tags_ocultas(
             estado.atualizar(aris=saida.strip())
             estado.adicionar_mensagem("aris", saida.strip())
 
+    # MEM — não gera fala
     memorias = re.findall(r"\[MEM\](.*?)\[/MEM\]", texto)
     for mem in memorias:
         logger.info("TAG [MEM]: %s", mem)
         print(f"\n[Gravando na memoria: {mem}]")
         salvar_memoria(usuario_atual, mem)
 
+    # FINANCE — gera fala
     financas = re.findall(r"\[FINANCE\](.*?)\[/FINANCE\]", texto)
     for ticker in financas:
         logger.info("TAG [FINANCE]: %s", ticker.strip())
@@ -77,8 +86,9 @@ def processar_tags_ocultas(
         print(f"[Mercado]: {resultado_fin}")
         estado.atualizar(aris=resultado_fin)
         estado.adicionar_mensagem("aris", resultado_fin)
-        callback_falar(resultado_fin)
+        resultados_fala.append(resultado_fin)
 
+    # AGENDA — gera fala
     agendas = re.findall(r"\[AGENDA\](.*?)\[/AGENDA\]", texto)
     for ag in agendas:
         logger.info("TAG [AGENDA]: %s", ag.strip())
@@ -87,8 +97,9 @@ def processar_tags_ocultas(
         print(f"[Google]: {resultado_ag}")
         estado.atualizar(aris=resultado_ag)
         estado.adicionar_mensagem("aris", resultado_ag)
-        callback_falar(resultado_ag)
+        resultados_fala.append(resultado_ag)
 
+    # DESMARCAR — gera fala
     desmarcacoes = re.findall(r"\[DESMARCAR\](.*?)\[/DESMARCAR\]", texto)
     for dm in desmarcacoes:
         logger.info("TAG [DESMARCAR]: %s", dm.strip())
@@ -97,8 +108,9 @@ def processar_tags_ocultas(
         print(f"[Google]: {resultado_dm}")
         estado.atualizar(aris=resultado_dm)
         estado.adicionar_mensagem("aris", resultado_dm)
-        callback_falar(resultado_dm)
+        resultados_fala.append(resultado_dm)
 
+    # CLIMA — gera fala
     climas = re.findall(r"\[CLIMA\](.*?)\[/CLIMA\]", texto)
     for cidade in climas:
         logger.info("TAG [CLIMA]: %s", cidade.strip())
@@ -107,8 +119,9 @@ def processar_tags_ocultas(
         print(f"[Clima]: {resultado_clima}")
         estado.atualizar(aris=resultado_clima)
         estado.adicionar_mensagem("aris", resultado_clima)
-        callback_falar(resultado_clima)
+        resultados_fala.append(resultado_clima)
 
+    # MEDIA — não gera fala
     medias = re.findall(r"\[MEDIA\](.*?)\[/MEDIA\]", texto)
     for acao in medias:
         logger.info("TAG [MEDIA]: %s", acao.strip())
@@ -118,6 +131,7 @@ def processar_tags_ocultas(
         estado.atualizar(aris=resultado_media)
         estado.adicionar_mensagem("aris", resultado_media)
 
+    # EMAIL — gera fala
     emails = re.findall(r"\[EMAIL\](.*?)\[/EMAIL\]", texto)
     for qtd in emails:
         logger.info("TAG [EMAIL]: %s", qtd.strip())
@@ -127,4 +141,6 @@ def processar_tags_ocultas(
         print(f"[Gmail]: {resultado_email}")
         estado.atualizar(aris=resultado_email)
         estado.adicionar_mensagem("aris", resultado_email)
-        callback_falar(resultado_email)
+        resultados_fala.append(resultado_email)
+
+    return " ".join(resultados_fala)
