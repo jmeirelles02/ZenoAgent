@@ -110,12 +110,12 @@ def analisar_imagem_com_visao(imagem_base64: str) -> str:
     try:
         resposta = _post_ollama("/api/generate", {
             "model": MODELO_VISAO,
-            "prompt": "Describe all UI elements, text, buttons, and layout visible on this screen.",
+            "prompt": "Analyze this screenshot. Describe the main application open, the overall layout, and read ONLY the large, prominent text. Keep it concise, do not guess small blurry text.",
             "images": [imagem_base64],
             "stream": False,
             "options": {
-                "temperature": 0.2,
-                "num_predict": 500,
+                "temperature": 0.0,
+                "num_predict": 400,
             },
         })
 
