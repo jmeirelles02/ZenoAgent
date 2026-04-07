@@ -1,3 +1,4 @@
+#!/bin/bash
 echo ">> Instalando dependências de sistema (pode pedir senha sudo)..."
 sudo apt update
 sudo apt install -y python3-venv python3-dev portaudio19-dev cmake pkg-config build-essential nodejs npm unzip \

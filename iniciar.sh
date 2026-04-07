@@ -1,3 +1,4 @@
+#!/bin/bash
 echo ">> Iniciando A.R.I.S no modo Linux..."
 
 if [ -f "venv/bin/activate" ]; then
