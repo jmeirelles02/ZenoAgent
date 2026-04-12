@@ -1,4 +1,8 @@
-"""Ponto de entrada do A.R.I.S Agent."""
+"""Ponto de entrada do A.R.I.S Agent — v2.0 (Native Tool Calling).
+
+Fluxo unificado:
+  Entrada (Voz/Texto) → Enriquecimento (Web/RAG) → LLM (Tools) → Resultado → Saída (Voz/UI)
+"""
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pygame")
@@ -14,10 +18,10 @@ from src.api import fila_comandos, fila_multimodal, rodar_servidor
 from src.config import GATILHOS_PESQUISA, GATILHOS_VISAO
 from src.database import buscar_memoria_relevante, inicializar_banco
 from src.llm import criar_sessao_chat, processar_requisicao_multimodal
+from src.observer import Observador
 from src.search import buscar_na_internet
-from src.speech import falar, ouvir
+from src.speech import falar, limpar_texto_para_fala, ouvir
 from src.state import estado
-from src.tags import limpar_texto_para_fala, processar_tags_ocultas
 from src.utils import obter_caminho_desktop
 from src.vision import capturar_tela_base64
 from src.wakeword import DetectorWakeWord
@@ -64,16 +68,7 @@ def resolver_entrada(entrada: str) -> str | None:
 
 
 def detectar_intencao_visao(texto: str) -> bool:
-    """Verifica se o texto do usuário indica intenção de análise visual.
-
-    Compara o texto contra a lista GATILHOS_VISAO definida em config.py.
-
-    Args:
-        texto: Texto falado ou digitado pelo usuário.
-
-    Returns:
-        True se alguma palavra-chave de visão foi detectada.
-    """
+    """Verifica se o texto do usuário indica intenção de análise visual."""
     texto_lower = texto.lower()
     return any(gatilho in texto_lower for gatilho in GATILHOS_VISAO)
 
@@ -81,36 +76,33 @@ def detectar_intencao_visao(texto: str) -> bool:
 def processar_com_visao(pergunta: str) -> None:
     """Captura a tela e processa pelo pipeline multimodal (Moondream → Qwen).
 
-    Fluxo:
-    1. Captura a tela via screenshot.
-    2. Envia para o pipeline dual-model (Moondream analisa → Qwen responde).
-    3. Atualiza o estado e fala a resposta.
-
     Args:
         pergunta: Texto original do usuário.
     """
     estado.atualizar(usuario=pergunta)
     estado.adicionar_mensagem("usuario", pergunta)
 
-    # Capturar tela
     estado.atualizar(status="CAPTURANDO TELA...")
     logger.info("Intenção de visão detectada. Capturando tela...")
     imagem_b64 = capturar_tela_base64()
 
     if imagem_b64 is None:
-        msg_erro = "Não consegui capturar a tela. Verifique se scrot ou gnome-screenshot está instalado."
+        msg_erro = (
+            "Não consegui capturar a tela. "
+            "Verifique se scrot ou gnome-screenshot está instalado."
+        )
         logger.error(msg_erro)
         estado.atualizar(status="ONLINE", aris=msg_erro)
         estado.adicionar_mensagem("aris", msg_erro)
         falar(msg_erro)
         return
 
-    logger.info("Tela capturada (%d chars B64). Enviando para pipeline multimodal...", len(imagem_b64))
+    logger.info(
+        "Tela capturada (%d chars B64). Enviando para pipeline multimodal...",
+        len(imagem_b64),
+    )
 
-    dados_multimodal = {
-        "comando": pergunta,
-        "imagem": imagem_b64,
-    }
+    dados_multimodal = {"comando": pergunta, "imagem": imagem_b64}
     processar_requisicao_visual(dados_multimodal)
 
 
@@ -144,7 +136,7 @@ def enriquecer_pergunta(pergunta: str) -> str:
 
 
 def processar_resposta_streaming(chat, pergunta_formatada: str) -> str:
-    """Envia pergunta ao LLM e imprime a resposta em streaming."""
+    """Envia pergunta ao LLM com Tool Calling e imprime a resposta em streaming."""
     estado.atualizar(status="PENSANDO...")
 
     texto_completo = ""
@@ -158,14 +150,7 @@ def processar_resposta_streaming(chat, pergunta_formatada: str) -> str:
 
 
 def processar_requisicao_visual(dados_multimodal: dict) -> None:
-    """Processa uma requisição multimodal (com imagem) pelo pipeline dual-model.
-
-    Fluxo:
-    1. Moondream analisa a imagem → gera descrição textual.
-    2. Descarrega Moondream da VRAM (keep_alive=0).
-    3. Qwen processa o prompt compilado → retorna JSON estruturado.
-    4. Resposta é validada via Pydantic e exibida ao usuário.
-    """
+    """Processa uma requisição multimodal (com imagem) pelo pipeline dual-model."""
     comando = dados_multimodal["comando"]
     imagem = dados_multimodal.get("imagem")
 
@@ -174,7 +159,10 @@ def processar_requisicao_visual(dados_multimodal: dict) -> None:
 
     modo = "ANALISANDO TELA..." if imagem else "PROCESSANDO..."
     estado.atualizar(status=modo)
-    logger.info("Pipeline multimodal iniciado (imagem: %s).", "SIM" if imagem else "NÃO")
+    logger.info(
+        "Pipeline multimodal iniciado (imagem: %s).",
+        "SIM" if imagem else "NÃO",
+    )
 
     resultado = processar_requisicao_multimodal(
         texto_usuario=comando,
@@ -193,29 +181,41 @@ def processar_requisicao_visual(dados_multimodal: dict) -> None:
 
     estado.atualizar(status="ONLINE", aris=texto_resposta)
     estado.adicionar_mensagem("aris", texto_resposta)
-
     falar(texto_resposta)
 
 
 detector_ww: DetectorWakeWord | None = None
+observador: Observador | None = None
 
 
 def loop_principal(chat) -> None:
-    """Loop principal de interação com o usuário."""
-    global detector_ww
-    usuario_db = "Sistema"
+    """Loop principal de interação com o usuário.
+
+    Fluxo unificado:
+      1. Verificar filas (multimodal → convencional)
+      2. Resolver entrada (voz ou texto)
+      3. Detectar intenção de visão
+      4. Enriquecer pergunta (web + RAG)
+      5. LLM com Tool Calling (ferramentas executadas automaticamente)
+      6. Saída (voz + UI)
+    """
+    global detector_ww, observador
 
     while True:
         try:
             estado.atualizar(status="ONLINE")
             if detector_ww:
                 detector_ww.retomar()
+            if observador:
+                observador.retomar()
 
             # ── Prioridade 1: Requisições multimodais (com imagem) ──
             dados_multimodal = verificar_fila_multimodal()
             if dados_multimodal:
                 if detector_ww:
                     detector_ww.pausar()
+                if observador:
+                    observador.pausar()
                 processar_requisicao_visual(dados_multimodal)
                 continue
 
@@ -226,6 +226,8 @@ def loop_principal(chat) -> None:
 
             if detector_ww:
                 detector_ww.pausar()
+            if observador:
+                observador.pausar()
 
             pergunta = resolver_entrada(entrada)
             if not pergunta:
@@ -237,7 +239,7 @@ def loop_principal(chat) -> None:
                 processar_com_visao(pergunta)
                 continue
 
-            # ── Fluxo convencional (apenas texto) ──
+            # ── Fluxo convencional: Texto → LLM (Tools) → Resposta ──
             estado.atualizar(usuario=pergunta)
             estado.adicionar_mensagem("usuario", pergunta)
 
@@ -248,34 +250,48 @@ def loop_principal(chat) -> None:
             estado.atualizar(aris=texto_limpo)
             estado.adicionar_mensagem("aris", texto_limpo)
 
-            resultados_tags = processar_tags_ocultas(texto_resposta, usuario_db)
-
-            # Combina texto do LLM + resultados das tags para fala única
-            texto_para_falar = texto_resposta
-            if resultados_tags:
-                texto_para_falar = f"{texto_resposta}\n{resultados_tags}"
-            falar(texto_para_falar)
+            # Tool calling já executou as ações automaticamente.
+            # Agora apenas falamos a resposta final do modelo.
+            falar(texto_resposta)
 
         except KeyboardInterrupt:
             logger.info("Recebido KeyboardInterrupt. Encerrando...")
             break
         except Exception as e:
             logger.error("Ocorreu um erro: %s", e)
-    
+
     if detector_ww:
         detector_ww.parar()
+    if observador:
+        observador.parar()
 
 
 def iniciar_aris_core() -> None:
     """Inicializa todos os subsistemas e inicia o loop principal."""
-    global detector_ww
+    global detector_ww, observador
     pygame.mixer.init()
 
-    print("==================================================")
-    print("A.R.I.S System Iniciado. Conectado ao Ollama (local).")
-    print("  Pipeline Multimodal: Moondream (visão ~2GB) + Qwen (lógica)")
-    print("  Gestão VRAM: keep_alive=0 (descarregamento dinâmico)")
-    print("==================================================")
+    # Importar todos os módulos com @aris_tool para popular o registro
+    import src.commands  # noqa: F401
+    import src.calendar_service  # noqa: F401
+    import src.database  # noqa: F401
+    import src.email_service  # noqa: F401
+    import src.finance  # noqa: F401
+    import src.media  # noqa: F401
+    import src.search  # noqa: F401
+    import src.weather  # noqa: F401
+
+    from src.plugins import listar_ferramentas
+
+    ferramentas = listar_ferramentas()
+
+    print("══════════════════════════════════════════════════")
+    print("  A.R.I.S v2.0 — Native Tool Calling")
+    print("  Pipeline: Ollama + Faster-Whisper + Observer")
+    print(f"  Ferramentas: {len(ferramentas)} registradas")
+    print(f"  → {', '.join(ferramentas)}")
+    print("  VRAM: keep_alive=0 (descarregamento dinâmico)")
+    print("══════════════════════════════════════════════════")
 
     inicializar_banco()
     iniciar_servidor_api()
@@ -286,6 +302,8 @@ def iniciar_aris_core() -> None:
         logger.info("Sinal de encerramento recebido. Encerrando de forma graciosa...")
         if detector_ww:
             detector_ww.parar()
+        if observador:
+            observador.parar()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, lidar_com_sinal)
@@ -296,6 +314,13 @@ def iniciar_aris_core() -> None:
         detector_ww.iniciar()
     except Exception as e:
         logger.warning("Wake word indisponível: %s", e)
+
+    # ── Iniciar Observador Proativo ──
+    try:
+        observador = Observador(callback_notificacao=falar)
+        observador.iniciar()
+    except Exception as e:
+        logger.warning("Observador proativo indisponível: %s", e)
 
     caminho_desktop = obter_caminho_desktop()
     chat = criar_sessao_chat(caminho_desktop, usuario="Sistema")

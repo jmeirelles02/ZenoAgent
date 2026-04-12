@@ -1,5 +1,6 @@
 """Consulta de previsao do tempo via Open-Meteo."""
 
+from src.plugins import aris_tool
 import logging
 import requests
 
@@ -17,8 +18,12 @@ WMO_CODES = {
     95: "Trovoada", 96: "Trovoada com granizo leve", 99: "Trovoada com granizo forte"
 }
 
+@aris_tool
 def buscar_clima(cidade: str) -> str:
-    """Busca a previsao do tempo atual para a cidade informada usando Open-Meteo."""
+    """Busca a previsão do tempo atual para a cidade informada.
+
+    cidade: Nome da cidade para consultar o clima (ex: 'São Paulo', 'Rio de Janeiro')
+    """
     try:
         # Primeiro, usamos a geocoding API para pegar as cordenadas da cidade
         geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={cidade}&count=1&language=pt&format=json"

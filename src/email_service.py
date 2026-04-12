@@ -1,5 +1,6 @@
 """Integração com Gmail para leitura de e-mails."""
 
+from src.plugins import aris_tool
 import logging
 
 from googleapiclient.discovery import build
@@ -15,8 +16,12 @@ def _obter_servico():
     return build("gmail", "v1", credentials=credenciais)
 
 
+@aris_tool
 def listar_emails_recentes(quantidade: int = 5) -> str:
-    """Lista os e-mails mais recentes da caixa de entrada."""
+    """Lista os e-mails mais recentes da caixa de entrada do Gmail.
+
+    quantidade: Número de e-mails a listar (padrão: 5)
+    """
     try:
         servico = _obter_servico()
         resultado = servico.users().messages().list(

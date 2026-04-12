@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from googleapiclient.discovery import build
 
 from src.google_auth import autenticar_google
+from src.plugins import aris_tool
 
 logger = logging.getLogger(__name__)
 
@@ -16,28 +17,35 @@ def _obter_servico():
     return build("calendar", "v3", credentials=credenciais)
 
 
-def criar_evento_calendario(texto_tag: str) -> str:
-    """Cria um evento no Google Calendar a partir de uma string formatada."""
+@aris_tool
+def criar_evento_calendario(data_hora: str, titulo: str) -> str:
+    """Cria um evento no Google Calendar com data/hora e título.
+
+    data_hora: Data e hora do evento no formato ISO 8601 (ex: '2026-04-15T14:00:00')
+    titulo: Título ou descrição do compromisso (ex: 'Reunião com equipe')
+    """
     try:
-        partes = texto_tag.split("|")
-        if len(partes) != 2:
-            return "Erro: Formato de agenda inválido."
-
-        inicio_str = partes[0].strip()
-        resumo = partes[1].strip()
-
-        inicio_dt = datetime.fromisoformat(inicio_str)
+        inicio_dt = datetime.fromisoformat(data_hora)
         fim_dt = inicio_dt + timedelta(hours=1)
 
         servico = _obter_servico()
         evento = {
-            "summary": resumo,
-            "start": {"dateTime": inicio_dt.isoformat(), "timeZone": "America/Sao_Paulo"},
-            "end": {"dateTime": fim_dt.isoformat(), "timeZone": "America/Sao_Paulo"},
+            "summary": titulo,
+            "start": {
+                "dateTime": inicio_dt.isoformat(),
+                "timeZone": "America/Sao_Paulo",
+            },
+            "end": {
+                "dateTime": fim_dt.isoformat(),
+                "timeZone": "America/Sao_Paulo",
+            },
         }
 
         servico.events().insert(calendarId="primary", body=evento).execute()
-        return f"O compromisso '{resumo}' foi agendado com sucesso na sua conta do Google."
+        return (
+            f"O compromisso '{titulo}' foi agendado com sucesso para "
+            f"{inicio_dt.strftime('%d/%m/%Y às %H:%M')}."
+        )
     except ValueError as e:
         logger.error("Formato de data inválido: %s", e)
         return f"Erro: Formato de data inválido: {e}"
@@ -46,28 +54,35 @@ def criar_evento_calendario(texto_tag: str) -> str:
         return f"Falha ao registrar na nuvem: {e}"
 
 
-def remover_evento_calendario(texto_tag: str) -> str:
-    """Remove um evento do Google Calendar buscando por título e data."""
+@aris_tool
+def remover_evento_calendario(data_hora: str, titulo: str) -> str:
+    """Remove um evento do Google Calendar buscando por título e data.
+
+    data_hora: Data do evento no formato ISO 8601 (ex: '2026-04-15T14:00:00')
+    titulo: Título do compromisso a remover
+    """
     try:
-        partes = texto_tag.split("|")
-        if len(partes) != 2:
-            return "Erro: Formato de desmarcação inválido."
+        data_ref = datetime.fromisoformat(data_hora)
+        inicio_dia = (
+            data_ref.replace(hour=0, minute=0, second=0).isoformat() + "Z"
+        )
+        fim_dia = (
+            data_ref.replace(hour=23, minute=59, second=59).isoformat() + "Z"
+        )
 
-        data_str = partes[0].strip()
-        titulo_busca = partes[1].strip().lower()
-
-        data_ref = datetime.fromisoformat(data_str)
-        inicio_dia = data_ref.replace(hour=0, minute=0, second=0).isoformat() + "Z"
-        fim_dia = data_ref.replace(hour=23, minute=59, second=59).isoformat() + "Z"
-
+        titulo_busca = titulo.lower()
         servico = _obter_servico()
-        resultado = servico.events().list(
-            calendarId="primary",
-            timeMin=inicio_dia,
-            timeMax=fim_dia,
-            singleEvents=True,
-            orderBy="startTime",
-        ).execute()
+        resultado = (
+            servico.events()
+            .list(
+                calendarId="primary",
+                timeMin=inicio_dia,
+                timeMax=fim_dia,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
 
         eventos = resultado.get("items", [])
         for evento in eventos:
@@ -76,9 +91,15 @@ def remover_evento_calendario(texto_tag: str) -> str:
                 servico.events().delete(
                     calendarId="primary", eventId=evento["id"]
                 ).execute()
-                return f"O compromisso '{evento.get('summary')}' foi removido com sucesso da sua agenda do Google."
+                return (
+                    f"O compromisso '{evento.get('summary')}' foi removido "
+                    "com sucesso da sua agenda do Google."
+                )
 
-        return f"Nenhum compromisso com título semelhante a '{partes[1].strip()}' foi encontrado nesta data."
+        return (
+            f"Nenhum compromisso com título semelhante a '{titulo}' "
+            "foi encontrado nesta data."
+        )
     except ValueError as e:
         logger.error("Formato de data inválido: %s", e)
         return f"Erro: Formato de data inválido: {e}"

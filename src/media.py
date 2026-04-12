@@ -1,5 +1,6 @@
 """Controle de mídia do sistema via teclas de mídia."""
 
+from src.plugins import aris_tool
 import logging
 
 import keyboard
@@ -24,8 +25,12 @@ ACOES_MIDIA: dict[str, str] = {
 }
 
 
+@aris_tool
 def controlar_midia(acao: str) -> str:
-    """Executa uma ação de controle de mídia via teclas do sistema."""
+    """Controla a reprodução de mídia do sistema (play, pause, próximo, anterior, mudo).
+
+    acao: Ação de mídia a executar (ex: 'play', 'pause', 'proximo', 'anterior', 'mudo')
+    """
     acao_lower = acao.strip().lower()
     tecla = ACOES_MIDIA.get(acao_lower)
 

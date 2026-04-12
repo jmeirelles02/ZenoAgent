@@ -12,12 +12,16 @@ VOZ_PADRAO: str = "pt-BR-AntonioNeural"
 ARQUIVO_AUDIO_TEMP: str = "resposta.mp3"
 
 PAUSA_RECONHECIMENTO: float = 2.0
-TIMEOUT_ESCUTA: int = 5
+TIMEOUT_ESCUTA: int = 8
 DURACAO_AJUSTE_RUIDO: float = 0.5
 
 MODELO_CHAT: str = "qwen2.5:latest"
 MODELO_VISAO: str = "moondream"
 MODELO_EMBEDDING: str = "nomic-embed-text"
+
+# Faster-Whisper — modelo para STT local
+# Opções: "tiny", "base", "small" (base recomendado para equilíbrio VRAM/precisão)
+FASTER_WHISPER_MODELO: str = "base"
 
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_TIMEOUT: int = 120
@@ -27,17 +31,15 @@ PORTA_API: int = 5000
 MAX_HISTORICO: int = 50
 MAX_HISTORICO_LLM: int = 20
 
-TAGS_OCULTAS: list[str] = [
-    "CMD", "MEM", "PYTHON", "FINANCE", "AGENDA", "DESMARCAR",
-    "CLIMA", "MEDIA", "EMAIL", "ABRIR",
-]
+# Observador proativo — intervalo em minutos
+OBSERVER_INTERVALO_MINUTOS: float = 5.0
 
 GATILHOS_PESQUISA: list[str] = [
-    "pesquise na", "busque na", "internet", "pesquise sobre", "notícia", "procurar na web"
+    "pesquise na", "busque na", "internet", "pesquise sobre",
+    "notícia", "procurar na web",
 ]
 
 # Palavras-chave que acionam o pipeline de visão (Moondream)
-# Se qualquer uma aparecer no comando do usuário, a tela é capturada automaticamente
 GATILHOS_VISAO: list[str] = [
     "minha tela", "na tela", "na minha tela", "a tela",
     "veja a tela", "olhe a tela", "olha a tela", "olha minha tela",

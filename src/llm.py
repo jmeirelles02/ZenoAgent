@@ -1,7 +1,7 @@
-"""Criação e configuração da sessão de chat com Ollama.
+"""Criação e configuração da sessão de chat com Ollama — Native Tool Calling.
 
 Suporta dois modos de operação:
-  1. Chat streaming (legado) — para interação conversacional fluida.
+  1. Chat com Tool Calling nativo — o modelo decide quando e qual ferramenta usar.
   2. Pipeline multimodal estruturado — para requisições com imagem (dual-model).
 """
 
@@ -17,42 +17,109 @@ from pydantic import ValidationError
 from src.config import MAX_HISTORICO_LLM, MODELO_CHAT
 from src.database import buscar_memoria_relevante
 from src.models import SystemResponse, validar_resposta_llm
-from src.ollama_client import (
-    OllamaClientError,
-    pipeline_multimodal,
-)
+from src.ollama_client import OllamaClientError, pipeline_multimodal
+from src.plugins import executar_ferramenta, obter_schemas_ferramentas
 
 logger = logging.getLogger(__name__)
 
 
 class SessaoChat:
-    """Gerencia uma sessão de chat com histórico de mensagens."""
+    """Gerencia uma sessão de chat com histórico e tool calling nativo."""
 
     def __init__(self, modelo: str, instrucoes_sistema: str):
         self.modelo = modelo
-        self.mensagens: list[dict[str, str]] = [
+        self.mensagens: list[dict[str, Any]] = [
             {"role": "system", "content": instrucoes_sistema}
         ]
+        self._tools = obter_schemas_ferramentas()
+        logger.info(
+            "Sessão de chat criada com %d ferramentas disponíveis.", len(self._tools)
+        )
 
     def enviar_mensagem_stream(self, mensagem: str) -> Generator[str, None, None]:
-        """Envia uma mensagem e retorna chunks de texto em streaming."""
+        """Envia uma mensagem e retorna chunks de texto em streaming.
+
+        Fluxo com Tool Calling:
+        1. Envia mensagem ao modelo com schemas de ferramentas.
+        2. Se o modelo retornar tool_calls, executa cada ferramenta.
+        3. Injeta resultados como mensagens role="tool" no histórico.
+        4. Re-envia ao modelo para gerar resposta final.
+        5. Yield dos chunks de texto da resposta final em streaming.
+        """
         self.mensagens.append({"role": "user", "content": mensagem})
         self._truncar_historico()
 
-        resposta_completa = ""
-        for chunk in ollama.chat(
-            model=self.modelo, messages=self.mensagens, stream=True
-        ):
-            texto = chunk.message.content
-            resposta_completa += texto
-            yield texto
+        # ── Passo 1: Primeira chamada (pode gerar tool_calls) ──
+        resposta_inicial = ollama.chat(
+            model=self.modelo,
+            messages=self.mensagens,
+            tools=self._tools,
+            stream=False,
+        )
 
-        self.mensagens.append({"role": "assistant", "content": resposta_completa})
+        msg_assistente = resposta_inicial.message
+
+        # ── Passo 2: Processar tool calls (se houver) ──
+        if msg_assistente.tool_calls:
+            logger.info(
+                "LLM solicitou %d ferramenta(s).", len(msg_assistente.tool_calls)
+            )
+
+            # Adicionar a mensagem do assistente (com tool_calls) ao histórico
+            self.mensagens.append({
+                "role": "assistant",
+                "content": msg_assistente.content or "",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        }
+                    }
+                    for tc in msg_assistente.tool_calls
+                ],
+            })
+
+            # Executar cada ferramenta e injetar resultado
+            for tool_call in msg_assistente.tool_calls:
+                nome = tool_call.function.name
+                args = tool_call.function.arguments
+                logger.info("Executando ferramenta: %s(%s)", nome, args)
+
+                resultado = executar_ferramenta(nome, args)
+
+                self.mensagens.append({
+                    "role": "tool",
+                    "content": str(resultado),
+                })
+
+            # ── Passo 3: Re-enviar ao modelo com resultados das ferramentas ──
+            resposta_completa = ""
+            for chunk in ollama.chat(
+                model=self.modelo,
+                messages=self.mensagens,
+                stream=True,
+            ):
+                texto = chunk.message.content
+                resposta_completa += texto
+                yield texto
+
+            self.mensagens.append({
+                "role": "assistant",
+                "content": resposta_completa,
+            })
+        else:
+            # ── Sem tool calls: retornar resposta direta ──
+            texto = msg_assistente.content or ""
+            self.mensagens.append({"role": "assistant", "content": texto})
+            yield texto
 
     def _truncar_historico(self) -> None:
         """Mantém apenas as últimas N mensagens + system prompt."""
         if len(self.mensagens) > MAX_HISTORICO_LLM + 1:
-            self.mensagens = [self.mensagens[0]] + self.mensagens[-MAX_HISTORICO_LLM:]
+            self.mensagens = (
+                [self.mensagens[0]] + self.mensagens[-MAX_HISTORICO_LLM:]
+            )
 
 
 def processar_requisicao_multimodal(
@@ -73,18 +140,15 @@ def processar_requisicao_multimodal(
     Returns:
         Dicionário com a resposta validada ou fallback em caso de erro.
     """
-    # Buscar contexto do banco vetorial
     contexto_rag = buscar_memoria_relevante(texto_usuario)
 
     try:
-        # Executar pipeline (com ou sem imagem)
         json_bruto = pipeline_multimodal(
             texto_usuario=texto_usuario,
             contexto_rag=contexto_rag,
             imagem_base64=imagem_base64,
         )
 
-        # Validar contra schema Pydantic
         resposta_validada = validar_resposta_llm(json_bruto)
         logger.info(
             "Resposta validada — ação: %s (confiança: %.2f)",
@@ -126,64 +190,65 @@ def _resposta_fallback(mensagem_erro: str) -> dict[str, Any]:
 
 
 def montar_instrucoes_sistema(caminho_desktop: str, usuario: str) -> str:
-    """Monta o system prompt com variáveis dinâmicas do ambiente."""
+    """Monta o system prompt para Native Tool Calling.
+
+    O prompt foi simplificado: as instruções sobre tags foram removidas.
+    O modelo agora recebe schemas de ferramentas automaticamente via
+    o parâmetro `tools` do ollama.chat().
+    """
     data_hora_atual = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     sistema_operacional = platform.system()
-    comando_abrir = "xdg-open" if sistema_operacional == "Linux" else "start"
 
     return f"""<IDENTIDADE>
-Voce e o A.R.I.S (Artificial Reactive Intelligence System), assistente pessoal no {sistema_operacional} do usuario. Responda em portugues do Brasil, de forma direta e sem distracao.
-Voce TEM PERMISSAO para executar comandos no {sistema_operacional}. Antes de acoes destrutivas, pergunte ao usuario.
+Você é o A.R.I.S (Artificial Reactive Intelligence System), assistente pessoal no {sistema_operacional} do usuário. Responda em português do Brasil, de forma direta e sem distração.
+Você TEM PERMISSÃO para executar comandos e usar ferramentas no {sistema_operacional}. Antes de ações destrutivas, pergunte ao usuário.
 </IDENTIDADE>
 
 <CONTEXTO>
-Usuario: {usuario}
+Usuário: {usuario}
 Data e hora atual: {data_hora_atual}
-Diretorio da Area de Trabalho: {caminho_desktop}
+Diretório da Área de Trabalho: {caminho_desktop}
 Sistema Operacional: {sistema_operacional}
 </CONTEXTO>
 
-<TAGS_DISPONIVEIS>
-Use APENAS estas tags. Nenhuma tag inventada e permitida.
-- [ABRIR]nome_do_app[/ABRIR] → Tenta abrir um programa (Smart: detecta se e binario, Flatpak ou Snap). Use para Spotify, Discord, Chrome, Steam, etc.
-- [CMD]comando[/CMD] → Executar comando literal no shell (apenas se o [ABRIR] nao for suficiente).
-- [MEM]fato[/MEM] → Gravar fato pessoal novo na memoria.
-- [PYTHON]codigo[/PYTHON] → Executar script Python. SEMPRE use caminhos absolutos.
-- [FINANCE]TICKER[/FINANCE] → Buscar cotacao na bolsa.
-- [AGENDA]YYYY-MM-DDTHH:MM:SS|Titulo[/AGENDA] → Criar compromisso no Google Calendar.
-- [DESMARCAR]YYYY-MM-DDTHH:MM:SS|Titulo[/DESMARCAR] → Cancelar compromisso.
-- [CLIMA]cidade[/CLIMA] → Buscar previsao do tempo.
-- [MEDIA]acao[/MEDIA] → Controle de midia (play, pause, proximo, anterior, mudo).
-- [EMAIL]quantidade[/EMAIL] → Listar ultimos e-mails do Gmail.
-</TAGS_DISPONIVEIS>
+<FERRAMENTAS>
+Você tem acesso a ferramentas que são chamadas automaticamente pelo sistema. Quando precisar executar uma ação, use a ferramenta apropriada. Os schemas das ferramentas são enviados automaticamente.
 
-<DICAS_LINUX_APPS>
-No Linux, SEMPRE use [ABRIR] primeiro para aplicativos. O sistema tentara automaticamente:
-1. Binario direto (ex: google-chrome)
-2. Flatpak (ex: com.discordapp.Discord)
-3. Snap (ex: snap run discord)
-Exemplos: [ABRIR]spotify[/ABRIR], [ABRIR]discord[/ABRIR], [ABRIR]brave[/ABRIR], [ABRIR]code[/ABRIR].
-Para sites, use [CMD]brave-browser-stable https://site.com &[/CMD] caso o [ABRIR] falhe.
-</DICAS_LINUX_APPS>
+REGRAS DE USO:
+1. Para abrir APLICATIVOS INSTALADOS (Spotify, Discord, Chrome, Steam, VS Code, etc), use 'abrir_aplicativo'.
+2. Para abrir SITES e URLs (YouTube, Google, GitHub, qualquer link), use 'abrir_url'. NUNCA use abrir_aplicativo para sites.
+3. Para comandos do terminal, use 'executar_comando'.
+4. Para PESQUISAR informações na internet, use 'buscar_na_internet'.
+5. Para agendar compromissos, use 'criar_evento_calendario' com data_hora em formato ISO 8601.
+6. Para cancelar compromissos, use 'remover_evento_calendario'.
+7. Para buscar clima, use 'buscar_clima' com o nome da cidade.
+8. Para buscar cotações, use 'buscar_cotacao' com o ticker (ex: PETR4.SA).
+9. Para gravar memória, use 'salvar_memoria'.
+10. Para executar scripts Python, use 'executar_python'.
+11. Para controlar mídia (play, pause, próximo, anterior), use 'controlar_midia'.
+12. Para listar e-mails, use 'listar_emails_recentes'.
 
-<FLUXO_DE_DECISAO>
-Siga esta ordem para decidir o que fazer:
-1. QUER ABRIR APLICATIVO? → Use APENAS [ABRIR]nome_do_app[/ABRIR]. O sistema cuidara da detencao.
-2. QUER ABRIR SITE? → No Linux, primeiro tente [ABRIR]brave[/ABRIR] com a URL ou use [CMD]brave-browser-stable [URL] &[/CMD].
-3. AGENDA / FINANCE / CLIMA / MEDIA / EMAIL? → Use as respectivas tags.
-4. PERGUNTA GERAL? → Responda direto ou use [PYTHON] para pesquisa web se necessario.
-</FLUXO_DE_DECISAO>
+IMPORTANTE:
+- Cada ferramenta será executada AUTOMATICAMENTE quando você a chamar.
+- O resultado será injetado na conversa para que você formule a resposta final.
+- NUNCA invente resultados. Se precisar de dados em tempo real, use a ferramenta.
+- Para ABRIR SITES, SEMPRE use 'abrir_url'. Exemplos de sites: youtube, google, github, reddit, twitter.
+</FERRAMENTAS>
 
-<EXEMPLOS>
-- Usuario: "abre o spotify" → [ABRIR]spotify[/ABRIR]
-- Usuario: "abre o discord" → [ABRIR]discord[/ABRIR]
-- Usuario: "abre o YouTube" → [CMD]brave-browser-stable https://www.youtube.com &[/CMD]
-- Usuario: "agenda reuniao amanha as 15h" → [AGENDA]2026-03-25T15:00:00|Reuniao[/AGENDA]
-- Usuario: "como esta o tempo em Sao Paulo?" → [CLIMA]Sao Paulo[/CLIMA]
-</EXEMPLOS>"""
+<EXEMPLOS_FERRAMENTAS>
+- Usuário: "abre o spotify" → use abrir_aplicativo(nome_app="spotify")
+- Usuário: "abre o discord" → use abrir_aplicativo(nome_app="discord")
+- Usuário: "abre o youtube" → use abrir_url(url="https://www.youtube.com")
+- Usuário: "acessar o github" → use abrir_url(url="https://www.github.com")
+- Usuário: "abre google.com" → use abrir_url(url="https://www.google.com")
+- Usuário: "pesquisa sobre inteligência artificial" → use buscar_na_internet(consulta="inteligência artificial")
+- Usuário: "agenda reunião amanhã às 15h" → use criar_evento_calendario(data_hora="2026-04-13T15:00:00", titulo="Reunião")
+- Usuário: "como está o tempo em São Paulo?" → use buscar_clima(cidade="São Paulo")
+- Usuário: "cotação da Petrobras" → use buscar_cotacao(ticker="PETR4.SA")
+</EXEMPLOS_FERRAMENTAS>"""
 
 
 def criar_sessao_chat(caminho_desktop: str, usuario: str) -> SessaoChat:
-    """Cria uma sessão de chat com o Ollama usando as instruções do sistema."""
+    """Cria uma sessão de chat com o Ollama usando instruções e tool calling."""
     instrucoes = montar_instrucoes_sistema(caminho_desktop, usuario)
     return SessaoChat(modelo=MODELO_CHAT, instrucoes_sistema=instrucoes)

@@ -1,5 +1,6 @@
 """Consulta de cotações do mercado financeiro."""
 
+from src.plugins import aris_tool
 import logging
 
 import yfinance as yf
@@ -7,8 +8,12 @@ import yfinance as yf
 logger = logging.getLogger(__name__)
 
 
+@aris_tool
 def buscar_cotacao(ticker: str) -> str:
-    """Busca a cotação atual de um ativo via Yahoo Finance."""
+    """Busca a cotação atual de um ativo na bolsa de valores.
+
+    ticker: Código do ativo no Yahoo Finance (ex: 'PETR4.SA', 'VALE3.SA', 'AAPL')
+    """
     try:
         ativo = yf.Ticker(ticker)
         dados = ativo.history(period="1d")

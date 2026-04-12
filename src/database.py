@@ -1,5 +1,6 @@
 """Gerenciamento do banco de dados vetorial e memória."""
 
+from src.plugins import aris_tool
 import logging
 import time
 from collections import OrderedDict
@@ -131,8 +132,13 @@ def dividir_em_chunks(
     return chunks
 
 
+@aris_tool
 def salvar_memoria(usuario: str, informacao: str) -> None:
-    """Salva informação na memória vetorial dividida em chunks."""
+    """Salva um fato ou informação pessoal na memória de longo prazo do sistema.
+
+    usuario: Nome do usuário associado à informação (ex: 'Sistema')
+    informacao: O fato ou informação a ser memorizada (ex: 'O usuário prefere café sem açúcar')
+    """
     if not _banco_disponivel:
         logger.warning("Tentativa de salvar memória com banco indisponível.")
         return

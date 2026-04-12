@@ -4,11 +4,17 @@ import logging
 
 from duckduckgo_search import DDGS
 
+from src.plugins import aris_tool
+
 logger = logging.getLogger(__name__)
 
 
+@aris_tool
 def buscar_na_internet(consulta: str) -> str:
-    """Pesquisa na web e retorna resultados compilados em texto."""
+    """Pesquisa informações atualizadas na internet sobre qualquer tema.
+
+    consulta: O que pesquisar na internet (ex: 'preço do dólar hoje', 'notícias sobre IA')
+    """
     try:
         resultados = DDGS().text(consulta, region="br-pt", timelimit="w", max_results=3)
         if not resultados:
